@@ -132,16 +132,45 @@
 		}
 	}
 
+	function getReference($predicate) { //get reference table for a predicate
+		global $conn;
+
+		$ref = new Reference();
+		$stmt = $conn->prepare("SELECT `id_ref`, `table_name`, `db_name` FROM `reference` WHERE id_ref = '$predicate'");
+		$stmt->execute();
+
+		$id_ref = "";
+		while ($res = $stmt->fetch()) {
+			$id_ref = $res['id_ref'];
+			$ref->setDatabase($res['db_name']);
+			$ref->setTablename($res['table_name']);
+		}
+
+		$attr = array();
+		$stmt = $conn->prepare("SELECT `attr_name` FROM `ref_attribute` WHERE id_ref = '$id_ref' ORDER BY `order` ASC");
+		$stmt->execute();
+
+		$i=0;
+		while ($res = $stmt->fetch()) {
+			$attr[$i] = $res['attr_name'];
+			$i++;
+		}
+		$ref->setAttributes($attr);
+
+		// print_r($ref);
+		return $ref;
+	}
+
 	function getIDB($rule_id) {
 		global $conn;
 
 		$idb = array();
-		$stmt = $conn->prepare("SELECT `predikat_edb` FROM `body_idb` b INNER JOIN `predikat` p ON b.predikat_edb = p.nama_predikat WHERE b.id_aturan = $rule_id AND p.kelompok_predikat = 'IDB'");
+		$stmt = $conn->prepare("SELECT `nama_predikat` FROM `body_idb` b INNER JOIN `predikat` p ON b.predikat = p.id_predikat WHERE b.id_aturan = $rule_id AND p.kelompok_predikat = 'IDB'");
 		$stmt->execute();
 		
 		$i = 0;
 		while($edb = $stmt->fetch()) {
-			$idb[$i] = $edb['predikat_edb'];
+			$idb[$i] = $edb['nama_predikat'];
 			$i++;
 		}
 
@@ -251,12 +280,12 @@
 		global $conn;
 
 		$res = array();
-		$stmt = $conn->prepare("SELECT predikat_edb, is_negasi, a.urutan_body, urutan_argumen, isi_argumen FROM `body_idb` b INNER JOIN `argumen_body` a ON b.urutan_body = a.urutan_body WHERE a.id_aturan = $rule AND b.id_aturan = $rule");
+		$stmt = $conn->prepare("SELECT p.nama_predikat, is_negasi, a.urutan_body, urutan_argumen, isi_argumen FROM `body_idb` b, `argumen_body` a, `predikat` p WHERE p.id_predikat = b.predikat AND b.urutan_body = a.urutan_body AND a.id_aturan = $rule AND b.id_aturan = $rule");
 		$stmt->execute();
 		$i = 0;
 		while($body = $stmt->fetch()) {
 			$rb = new RuleBody();
-			$rb->setPredicate($body['predikat_edb']);
+			$rb->setPredicate($body['nama_predikat']);
 			$rb->setNegasi($body['is_negasi']);
 			$rb->setBodyOrder($body['urutan_body']);
 			$rb->setArgOrder($body['urutan_argumen']);
@@ -385,7 +414,7 @@
 				$i++;
 			}
 		}
-		print_r($substitution);
+		// print_r($substitution);
 		return $substitution;
 	}
 
@@ -406,7 +435,7 @@
 	function collectRules($predicate) {
 
 		$idb = getIDBList($predicate); //get every idb which involve in corresponding rule
-		print_r($idb);
+		// print_r($idb);
 		$test = array();
 		for ($i=0; $i<sizeof($idb); $i++) {
 			$idx = sizeof($test);

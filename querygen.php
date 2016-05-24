@@ -40,7 +40,6 @@
 	// needed for performance optimization 
 	function getOnProperties($bodies) {
 		global $conn;
-
 		$predicate = $bodies[0]->getPredicate();
 		$args = array();
 		$i = 0;
@@ -71,6 +70,7 @@
 			if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args))) {
 				//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
 				$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
+				//echo $on[$i]."\n";
 				$i++;
 			}
 		}
@@ -81,7 +81,6 @@
 
 		$substitution = substituteVar($bodies); //get variable substitute
 		$conditions = array(); //argument(s) for selection
-		parseFormula("Y + 1", $substitution);
 		$i = 0; $idx = 0;
 		
 		while($i < sizeof($bodies)) {
@@ -171,7 +170,7 @@
 
 	 	// $generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition." ".$constant;
 	 	$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition;
-	 	echo ($generate)."\n";
+	 	// echo ($generate)."\n";
 
 	 	return $generate;
 	}
@@ -181,15 +180,13 @@
 		$idb = getIDBList($predicate);
 		$idx = 0;
 		$queries = array();
-		echo "This is bodies array ".sizeof($bodies)."\n";
+
 		$i = 0;
 		while($i<sizeof($bodies)) {
-			echo $i."iterasi \n";
 			if(hasVariant($idb[$idx])) {
 				$union = "";
 				$predicate = $idb[$idx];
 				for($j=$i; $j<=numVariant($predicate)+$i-1; $j++) {
-					echo $j." ".numVariant($predicate)."\n";
 					//print_r($bodies[$j]);
 					if($j == $i) {
 						$union = $union.generateQuery($predicate, $bodies[$j], $cons);	
@@ -211,6 +208,27 @@
 		return $queries;
 	}
 
+	function refToQuery($reference) { //create query for predicate reference
+
+		$database = $reference->getDatabase();
+		$table = $reference->getTablename();
+		
+		$attributes = ""; // get projection attribute
+		$attr = $reference->getAttributes();
+		for($i=0; $i<sizeof($attr); $i++) {
+			if($i == 0) {
+				$attributes = $attributes.$attr[$i];
+			}
+			else {
+				$attributes = $attributes.", ".$attr[$i];
+			}
+		}
+
+		$query = "SELECT ".$attributes." FROM ".$database.".".$table;
+
+		return $query;
+	}
+
 	function createTempTable($query, $predicate) {
 		global $conn;
 
@@ -222,6 +240,10 @@
 		// $res = $stmt->fetch();
 		
 		// print_r($res);
+	}
+
+	function createView() {
+
 	}
 
 	function checkingQuery($idb, $facts, $target) {
@@ -253,19 +275,24 @@
 	//echo categorizeQuery($query);
 	evalType3($query);
 	evalFact($query); */
-	$rules = getRules("BS02");
+	$rules = getRules("BS2A");
+	print_r($rules);
 	$test = collectRules($rules[0]);
+	$head = getHead($rules[0]);
+	//print_r($head);
 	$queries = ruleToQuery($test, $rules[0], $cons);
 	//$test = getRuleBody($query->getPredicate());
 	//print_r($test);
 	
- 	
- 	// print_r($queries); 
+ 	$ref = refToQuery(getReference("nr"));
+ 	getCurrentData("max24_sks");
+ 	print_r($queries); 
  		
 	foreach ($queries as $predicate => $query) {
 		createTempTable($query, $predicate);
 	}
 	checkInstance($rules[0]);
+	
 	$conn = null;
 
 ?>
