@@ -11,7 +11,7 @@
 		$i = 0;
 		foreach ($bodies as $body) {
 			$current = $body->getPredicate();
-			if(!in_array($current, $ref) && !isComparator($current)) { //check if element is already exist in array or a comparator
+			if(!in_array($current, $ref) && !isOperator($current)) { //check if element is already exist in array or a comparator
 				$ref[$i] = $body->getPredicate();
 				$i++;
 			}
@@ -20,17 +20,18 @@
 		return $ref;
 	}
 
-	function getProjection($bodies) {
+	function getProjection($head, $sub) {
 		global $conn;
 
-		$predicate = $bodies[0]->getPredicate();
+		$id = $head[0]->getRuleId();
 		$res = array();
-		$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.table_name = '$predicate'");
+		$stmt = $conn->prepare("SELECT `isi_argumen` FROM `argumen_head` WHERE id_rule = $id");
 		$stmt->execute();
+
 		$i = 0;
 		while($body = $stmt->fetch()) {
-
-			$res[$i] = $predicate.".".$body['attr_name']." AS ".$body['attr_name'];
+			$attr = substr($sub[$body['isi_argumen']], strpos($sub[$body['isi_argumen']], ".") + 1); //get text after "."
+			$res[$i] = $sub[$body['isi_argumen']]." AS ".$attr;
 			$i++;
 		}
 
@@ -67,7 +68,7 @@
 		# get another predicate for comparator
 		$i = 0;
 		foreach ($bodies as $body) {
-			if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args))) {
+			if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
 				//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
 				$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
 				//echo $on[$i]."\n";
@@ -119,9 +120,13 @@
 
 	function generateQuery($predicate, $bodies, $cons) {
 
+		//get head argument
+		$head = getHead($predicate);
+		$sub = substituteVar($bodies);
+
 		#query generator
 	 	$from = getTableRef($bodies);
-	 	$select = getProjection($bodies);
+	 	$select = getProjection($head, $sub);
 	 	$join = getOnProperties($bodies);
 	 	$where = getSelection($bodies);
 	 	$value = getQueryVal($predicate, $bodies, $cons);
@@ -282,14 +287,14 @@
 	//print_r($head);
 	$queries = ruleToQuery($test, $rules[0], $cons);
 	//$test = getRuleBody($query->getPredicate());
-	//print_r($test);
+	// print_r($test);
 	
  	$ref = refToQuery(getReference("nr"));
  	getCurrentData("max24_sks");
  	print_r($queries); 
  		
 	foreach ($queries as $predicate => $query) {
-		createTempTable($query, $predicate);
+			createTempTable($query, $predicate);
 	}
 	checkInstance($rules[0]);
 	

@@ -90,6 +90,29 @@
 		}
 	}
 
+	function isOperator($predicate) {
+		global $conn;
+
+		$stmt = $conn->prepare("SELECT kelompok_predikat FROM predikat WHERE nama_predikat = '$predicate'");
+		$stmt->execute();
+		$res = $stmt->fetch();
+
+		if($res[0] == "Operator") {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	function getPrevious($var, $idx) {
+		return $var." - ".$idx;
+	}
+
+	function getNext($var, $idx) {
+		return $var." + ".$idx;
+	}
+
 	function hasVariant($head) { //check if any rule has more than one statement 
 		global $conn;
 
@@ -229,6 +252,7 @@
 	  $i = 0;
 		while($head_arg = $stmt->fetch()) {
 			$rh = new RuleHead();
+			$rh->setRuleId($head_arg['id_rule']);
 			$rh->setPredicate($predicate);
 			$rh->setArgOrder($head_arg['urutan']);
 			$rh->setContent($head_arg['isi_argumen']);
@@ -427,8 +451,8 @@
 				$substitution[$head[$i]->getContent()] = $cons[$i];
 			}
 		}
-		//echo "After assignment \n";
-		//print_r($substitution);
+		// echo "After assignment \n";
+		// print_r($substitution);
 		return $substitution;
 	}
 
