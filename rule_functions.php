@@ -421,7 +421,7 @@
 					$res = $stmt->fetch();
 					if(!empty($res[0])) {
 						$table = $res[0];
-						$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.table_name = '$table' AND a.order = $order");
+						$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE a.id_ref = '$table' AND a.order = $order");
 						$stmt->execute();
 						$result = $stmt->fetch();
 						
@@ -429,7 +429,7 @@
 					}
 				}
 				else {
-					$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.table_name = '$predicate' AND a.order = $order");
+					$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.id_ref = '$predicate' AND a.order = $order");
 					$stmt->execute();
 					$result = $stmt->fetch();
 					

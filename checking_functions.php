@@ -16,6 +16,23 @@
 		return $rules;
 	}
 
+	function generateRef($bodies) { //prepare reference for predicate
+
+		$queries = array();
+		foreach ($bodies as $body) {
+			$predicate = $body->getPredicate();
+
+			if(!isOperator($predicate) && !isIDB($predicate)) {
+				$ref = getReference($predicate);
+				$queries[$predicate] = refToQuery($ref);
+			}
+		}
+		
+		foreach ($queries as $name => $query) {
+			createView($query, $name);
+		}
+	}
+
 	function getCurrentData($idb) { //get snapshot of data which will be checked
 		global $conn;
 
@@ -44,7 +61,7 @@
 		}
 		$ref->setAttributes($data);
 
-		print_r($ref);
+		// print_r($ref);
 		return $ref;
 	}
 

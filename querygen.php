@@ -56,14 +56,14 @@
 		$res = array();
 		$i = 0;
 		# get attribute name associated to argument(s) name
-		$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.table_name = '$predicate'");
+		$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.id_ref = '$predicate'");
 		$stmt->execute();
 		while($body = $stmt->fetch()) {
 
 			$res[$args[$i]] = $body['attr_name'];
 			$i++;
 		}
-		
+		print_r($res);
 		$on = array();
 		# get another predicate for comparator
 		$i = 0;
@@ -240,15 +240,14 @@
 		$stmt = $conn->prepare("CREATE TEMPORARY TABLE IF NOT EXISTS $predicate AS $query");
 		$stmt->execute();
 		// var_dump($stmt);
-		// $stmt = $conn->prepare("SELECT * FROM `last_nr1`");
-		// $stmt->execute();
-		// $res = $stmt->fetch();
-		
-		// print_r($res);
 	}
 
-	function createView() {
+	function createView($query, $predicate) {
+		global $conn;
 
+		$stmt = $conn->prepare("CREATE OR REPLACE VIEW $predicate AS $query");
+		$stmt->execute();
+		// var_dump($stmt);
 	}
 
 	function checkingQuery($idb, $facts, $target) {
@@ -265,8 +264,10 @@
 	//End of functions
 
 	//Main program
-	$query = new Query();
-	//$query = parseArgument("orangtua(John,Michael)"); 
+	// $query = new Query();
+	//$query = parseArgument("orangtua(John,Michael)");
+
+	#condition example 
 	$query = parseRule("max24_sks(13512075,3)");
 	$cons = array();
 	$var = $query->getConditions();
@@ -275,21 +276,17 @@
 		$cons[$i] = $var['argumen_'.$j];
 	}
 	print_r($cons);
-	/*
-	//echo $query->getPredicate()."\n";
-	//echo categorizeQuery($query);
-	evalType3($query);
-	evalFact($query); */
+
 	$rules = getRules("BS2A");
 	print_r($rules);
 	$test = collectRules($rules[0]);
 	$head = getHead($rules[0]);
 	//print_r($head);
 	$queries = ruleToQuery($test, $rules[0], $cons);
-	//$test = getRuleBody($query->getPredicate());
+	// $test = getRuleBody($query->getPredicate());
 	// print_r($test);
 	
- 	$ref = refToQuery(getReference("nr"));
+ 	// $ref = generateRef($test);
  	getCurrentData("max24_sks");
  	print_r($queries); 
  		
