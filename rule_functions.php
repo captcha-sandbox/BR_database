@@ -155,35 +155,6 @@
 		}
 	}
 
-	function getReference($predicate) { //get reference table for a predicate
-		global $conn;
-
-		$ref = new Reference();
-		$stmt = $conn->prepare("SELECT `id_ref`, `table_name`, `db_name` FROM `reference` WHERE id_ref = '$predicate'");
-		$stmt->execute();
-
-		$id_ref = "";
-		while ($res = $stmt->fetch()) {
-			$id_ref = $res['id_ref'];
-			$ref->setDatabase($res['db_name']);
-			$ref->setTablename($res['table_name']);
-		}
-
-		$attr = array();
-		$stmt = $conn->prepare("SELECT `attr_name` FROM `ref_attribute` WHERE id_ref = '$id_ref' ORDER BY `order` ASC");
-		$stmt->execute();
-
-		$i=0;
-		while ($res = $stmt->fetch()) {
-			$attr[$i] = $res['attr_name'];
-			$i++;
-		}
-		$ref->setAttributes($attr);
-
-		// print_r($ref);
-		return $ref;
-	}
-
 	function getIDB($rule_id) {
 		global $conn;
 
@@ -411,22 +382,23 @@
 				$predicate = $body->getPredicate();
 
 				if(isIDB($body->getPredicate())) { //get reference for idb if any
-					$stmt = $conn->prepare("SELECT `id_predikat` FROM predikat WHERE nama_predikat = '$predicate'");
-					$stmt->execute();
-					$res = $stmt->fetch();
-					$id = $res[0];
+					// $stmt = $conn->prepare("SELECT `id_predikat` FROM predikat WHERE nama_predikat = '$predicate'");
+					// $stmt->execute();
+					// $res = $stmt->fetch();
+					// $id = $res[0];
 
-					$stmt = $conn->prepare("SELECT `reference` FROM predicate_ref WHERE id_predikat = $id");
-					$stmt->execute();
-					$res = $stmt->fetch();
-					if(!empty($res[0])) {
-						$table = $res[0];
-						$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE a.id_ref = '$table' AND a.order = $order");
-						$stmt->execute();
-						$result = $stmt->fetch();
+					// $stmt = $conn->prepare("SELECT `reference` FROM predicate_ref WHERE id_predikat = $id");
+					// $stmt->execute();
+					// $res = $stmt->fetch();
+					// if(!empty($res[0])) {
+					// 	$table = $res[0];
+					// 	$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE a.id_ref = '$table' AND a.order = $order");
+					// 	$stmt->execute();
+					// 	$result = $stmt->fetch();
 						
-						$substitution[$body->getContent()] = $predicate.".".$result[0]; //get substitution for variable(s)
-					}
+					// 	$substitution[$body->getContent()] = $predicate.".".$result[0]; //get substitution for variable(s)
+					// }
+						$substitution[$body->getContent()] = $predicate.".".$body->getContent();				
 				}
 				else {
 					$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.id_ref = '$predicate' AND a.order = $order");

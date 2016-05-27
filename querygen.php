@@ -31,7 +31,7 @@
 		$i = 0;
 		while($body = $stmt->fetch()) {
 			$attr = substr($sub[$body['isi_argumen']], strpos($sub[$body['isi_argumen']], ".") + 1); //get text after "."
-			$res[$i] = $sub[$body['isi_argumen']]." AS ".$attr;
+			$res[$i] = $sub[$body['isi_argumen']]." AS ".$body['isi_argumen'];
 			$i++;
 		}
 
@@ -52,7 +52,7 @@
 			}
 		}
 		//print_r($args);
-
+		echo $predicate."\n";
 		$res = array();
 		$i = 0;
 		# get attribute name associated to argument(s) name
@@ -63,15 +63,19 @@
 			$res[$args[$i]] = $body['attr_name'];
 			$i++;
 		}
-		print_r($res);
 		$on = array();
 		# get another predicate for comparator
 		$i = 0;
 		foreach ($bodies as $body) {
 			if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
-				//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
-				$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
-				//echo $on[$i]."\n";
+					if(!isIDB($predicate)) {
+					//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
+					$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
+					//echo $on[$i]."\n";
+					}
+					else {
+					$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$body->getContent();
+					}
 				$i++;
 			}
 		}
@@ -88,7 +92,7 @@
 			if(isComparator($bodies[$i]->getPredicate())) {
 				if(isVariable($bodies[$i+1]->getContent())) {
 					$conditions[$idx] = $substitution[$bodies[$i]->getContent()]." ".$bodies[$i]->getPredicate()." ".$substitution[$bodies[$i+1]->getContent()];
-				}
+					}
 				else {
 					$conditions[$idx] = $substitution[$bodies[$i]->getContent()]." ".$bodies[$i]->getPredicate()." ".$bodies[$i+1]->getContent();
 				}
@@ -97,7 +101,7 @@
 			$i++;
 		}
 		// echo "This is condition \n";
-		// print_r($conditions);
+		print_r($conditions);
 		return $conditions;
 	}
 
@@ -155,17 +159,23 @@
 
 	 	$on = ""; //combine join attribute
 		for($i=0; $i<sizeof($join); $i++) {
-	 		if($i<1) {
-	 			$on = $on.$join[$i];
-	 		}
-	 		else {
-	 			$on = $on." AND ".$join[$i];
-	 		}
+			
+		 		if($i<1) {
+		 			$on = $on.$join[$i];
+		 		}
+		 		else {
+		 			$on = $on." AND ".$join[$i];
+		 		}
 	 	}
 
 	 	$condition = ""; //combine selection condition
 	 	for($i=0; $i<sizeof($where); $i++) {
-	 		$condition = $condition." AND ".$where[$i];
+	 		if(empty($join)) {
+	 			$condition = $condition." ".$where[$i];	
+	 		}
+	 		else {
+	 			$condition = $condition." AND ".$where[$i];
+	 		}
 	 	}
 
 	 	$constant = ""; //combine input from user
@@ -173,10 +183,11 @@
 	 		$constant = $constant." AND ".$value[$i];
 	 	}
 
-	 	// $generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition." ".$constant;
+ 		// $generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition." ".$constant;
 	 	$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition;
 	 	// echo ($generate)."\n";
-
+	 	
+	 	
 	 	return $generate;
 	}
 
@@ -250,13 +261,25 @@
 		// var_dump($stmt);
 	}
 
-	function checkingQuery($idb, $facts, $target) {
+	function checkingQuery($idb, $facts, $target, $arg) {
 
-		$condition = $idb.".".$target." = ".$facts.".".$target;
+		$i = 0;
+		$condition = "";
+		while ($i<sizeof($target)) {
+			if($i == 0) {
+				$condition = $condition.$idb.".".$target[$i]." = ".$facts.".".$arg[$i];
+			}
+			else {
+				$condition = $condition." AND ".$idb.".".$target[$i]." = ".$facts.".".$arg[$i];		
+			}
+			$i++;
+		}
+		
 		$source = "SELECT * FROM $idb";
 		$target = "(SELECT * FROM $facts WHERE $condition)";
+		// $target = "SELECT * FROM $facts";
 		$check = $source." WHERE NOT EXISTS ".$target;
-
+		echo $check."\n";
 		return $check;
 
 	}
@@ -268,14 +291,14 @@
 	//$query = parseArgument("orangtua(John,Michael)");
 
 	#condition example 
-	$query = parseRule("max24_sks(13512075,3)");
+	// $query = parseRule("max24_sks(13512075,3)");
 	$cons = array();
-	$var = $query->getConditions();
-	for ($i=0; $i<sizeof($var); $i++) {
-		$j = $i+1; 
-		$cons[$i] = $var['argumen_'.$j];
-	}
-	print_r($cons);
+	// $var = $query->getConditions();
+	// for ($i=0; $i<sizeof($var); $i++) {
+	// 	$j = $i+1; 
+	// 	$cons[$i] = $var['argumen_'.$j];
+	// }
+	// print_r($cons);
 
 	$rules = getRules("BS2A");
 	print_r($rules);
@@ -286,7 +309,7 @@
 	// $test = getRuleBody($query->getPredicate());
 	// print_r($test);
 	
- 	// $ref = generateRef($test);
+ 	$ref = generateRef($test);
  	getCurrentData("max24_sks");
  	print_r($queries); 
  		
@@ -294,7 +317,7 @@
 			createTempTable($query, $predicate);
 	}
 	checkInstance($rules[0]);
-	
+
 	$conn = null;
 
 ?>
