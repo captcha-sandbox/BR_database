@@ -105,14 +105,6 @@
 		}
 	}
 
-	function getPrevious($var, $idx) {
-		return $var." - ".$idx;
-	}
-
-	function getNext($var, $idx) {
-		return $var." + ".$idx;
-	}
-
 	function hasVariant($head) { //check if any rule has more than one statement 
 		global $conn;
 
@@ -127,6 +119,58 @@
 		else {
 			return false;
 		}
+	}
+
+	function hasPrevious($body) { //check if operator previous is being used
+
+		$predicates = array(); $i=0;
+		foreach ($body as $rulebody) {
+			$predicates[$i] = $rulebody->getPredicate();
+			$i++;
+		}
+
+		if(in_array("previous", $predicates)) {
+			return true;
+		}
+		else {
+			return false;
+		}			
+	}
+
+	function getPrevious($sub, $bodies, $args) { //get previous operands
+		// print_r($args);
+		$on = array(); $j=0;
+		while ($j<sizeof($bodies)) {
+			if(in_array($bodies[$j]->getContent(), $args)) {
+				if($bodies[$j]->getPredicate() == "previous") {
+					$on[$bodies[$j]->getContent()] = $sub[$bodies[$j]->getContent()]."-".$bodies[$j+1]->getContent();
+					$j++;
+				}
+				else {
+					$on[$bodies[$j]->getContent()] = $sub[$bodies[$j]->getContent()];
+				}
+			}
+			$j++;
+		}
+		return $on;
+	}
+
+	function getPreviousVal($bodies, $args) { //get value to be decremented
+
+		$on = array(); $j=0;
+		while ($j<sizeof($bodies)) {
+			if(in_array($bodies[$j]->getContent(), $args)) {
+				if($bodies[$j]->getPredicate() == "previous") {
+					$on[$bodies[$j]->getContent()] = $bodies[$j]->getContent()."-".$bodies[$j+1]->getContent();
+					$j++;
+				}
+				else {
+					$on[$bodies[$j]->getContent()] = $bodies[$j]->getContent();
+				}
+			}
+			$j++;
+		}
+		return $on;
 	}
 
 	function numVariant($head) { //count how many variations exist for a rule 

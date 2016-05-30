@@ -153,7 +153,7 @@
 		$stmt = $conn->prepare($check);
 		$stmt->execute();
 		$res = $stmt->fetchAll();
-		print_r($res);
+		// print_r($res);
 
 		//reporting using log file(s)
 		// while ($res = $stmt->fetch()) {

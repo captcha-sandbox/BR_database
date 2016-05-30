@@ -66,19 +66,40 @@
 		$on = array();
 		# get another predicate for comparator
 		$i = 0;
-		foreach ($bodies as $body) {
-			if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
-					if(!isIDB($predicate)) {
-					//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
-					$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
-					//echo $on[$i]."\n";
-					}
-					else {
-					$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$body->getContent();
-					}
-				$i++;
+		if(hasPrevious($bodies, $args)) {
+			$prev = getPrevious($res, $bodies, $args);
+			$val = getPreviousVal($bodies, $args);
+			foreach ($bodies as $body) {
+				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
+						if(!isIDB($predicate)) {
+						//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
+						$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$prev[$body->getContent()];
+						//echo $on[$i]."\n";
+						}
+						else {
+						$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$val[$body->getContent()];
+						}
+					$i++;
+				}
 			}
 		}
+		else {
+			foreach ($bodies as $body) {
+				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
+						if(!isIDB($predicate)) {
+						//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
+						$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
+						//echo $on[$i]."\n";
+						}
+						else {
+						$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$body->getContent();
+						}
+					$i++;
+				}
+			}
+		}
+		
+		// print_r($on);
 		return $on;
 	}
 
