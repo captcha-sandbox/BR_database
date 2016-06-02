@@ -82,7 +82,7 @@
 	}
 
 	function isComparator($arg) {
-		if($arg == '=' OR $arg == '<>' OR $arg == '>=' OR $arg == '=<' OR $arg == '>' OR $arg == '<') {
+		if($arg == '=' OR $arg == '<>' OR $arg == '>=' OR $arg == '<=' OR $arg == '>' OR $arg == '<') {
 			return true;
 		}
 		else {
@@ -184,6 +184,35 @@
 		return $amount[0];
 	}
 
+	function collectVariable($predicate, $bodies) { //get all variable for a predicate
+
+		$args = array(); $i = 0;
+		foreach ($bodies as $body) {
+			if($body->getPredicate() == $predicate) {
+				$args[$i] = $body->getContent();
+				$i++;
+			}
+		}
+		return $args;
+	}
+
+	function getEDBAttributes($predicate, $bodies) { //get attribute(s) for corresponding EDB
+		global $conn;
+
+		$args = collectVariable($predicate, $bodies);
+		$res = array();
+		$i = 0;
+		
+		$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.id_ref = '$predicate'");
+		$stmt->execute();
+		while($body = $stmt->fetch()) {
+			$res[$args[$i]] = $body['attr_name'];
+			$i++;
+		}
+
+		return $res;
+	}
+
 	function isIDB($predicate) { //check whether the predicate is IDB or not
 		global $conn;
 		
@@ -221,10 +250,16 @@
 		//get head part of idb
 		$stmt = $conn->prepare("SELECT id_aturan FROM idb i INNER JOIN predikat p ON i.id_predikat = p.id_predikat  WHERE nama_predikat = '$predicate'");
 		$stmt->execute();
-		$rule = $stmt->fetch();
-		$rule_id = $rule[0];
+		// $rule = $stmt->fetch();
+		// $rule_id = $rule[0];
 
-		$idb = getIDB($rule_id);
+		// $idb = getIDB($rule_id);
+		// print_r($rule);
+		$idb = array(); $i = 0;
+		while ($rule = $stmt->fetch()) {
+			$idb = getIDB($rule['id_aturan']);
+		}
+		// print_r($idb);
 		$list = array();
 
 		array_push($list, $predicate);
@@ -233,15 +268,21 @@
 			array_push($list, $elmt);
 			$stmt = $conn->prepare("SELECT id_aturan FROM idb i INNER JOIN predikat p ON i.id_predikat = p.id_predikat WHERE nama_predikat = '$elmt'");
 			$stmt->execute();
-			$id = $stmt->fetch();
-			$head = $id[0];
-			if(!empty($head)) {// check if array is empty
-				$temp = getIDB($head); //get another idb predicate (if any)
+
+			$head = array(); $i=0;
+			while ($id = $stmt->fetch()) {
+				$head[$i] = $id['id_aturan'];
+				$i++;
+			}
+			// print_r($head);
+			while(!empty($head)) {// check if array is empty
+				$head_elmt = array_pop($head);
+				$temp = getIDB($head_elmt); //get another idb predicate (if any)
 				$idb = array_merge($idb, $temp);
 			}
 		}
-
 		$reverse = array_reverse($list);
+		// print_r($reverse);
 		return $reverse;
 	}
 
@@ -476,6 +517,7 @@
 
 		$idb = getIDBList($predicate); //get every idb which involve in corresponding rule
 		// print_r($idb);
+
 		$test = array();
 		for ($i=0; $i<sizeof($idb); $i++) {
 			$idx = sizeof($test);

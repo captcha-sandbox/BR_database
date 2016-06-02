@@ -1,4 +1,20 @@
 <?php
+
+	function getStatement($policy) { //get all business statements for corresponding policy
+		global $conn;
+
+		$stmt = $conn->prepare("SELECT `id_statement` FROM br_statement br INNER JOIN policy p ON br.id_policy = p.id_policy WHERE p.id_policy = '$policy'");
+		$stmt->execute();
+
+		$statements = array();
+		$i = 0;
+		while ($res = $stmt->fetch()) {
+			$statements[$i] = $res['id_statement'];
+			$i++;
+		}
+
+		return $statements;
+	}
 	
 	function getRules($bs) { //get all rules for corresponding business statement
 		global $conn;
@@ -6,14 +22,29 @@
 		$stmt = $conn->prepare("SELECT nama_predikat FROM predikat p INNER JOIN br_statement br ON br.predikat = p.id_predikat WHERE br.id_statement = '$bs'");
 		$stmt->execute();
 
-		$rules = array();
+		$rule = "";
 		$i = 0;
 		while ($res = $stmt->fetch()) {
-			$rules[$i] = $res['nama_predikat'];
-			$i++;
+			$rule = $res['nama_predikat'];
 		}
 
-		return $rules;
+		return $rule;
+	}
+
+	function getTarget($bs) {
+		global $conn;
+
+		$stmt = $conn->prepare("SELECT nama_predikat FROM predikat p INNER JOIN br_statement br ON br.target = p.id_predikat WHERE br.id_statement = '$bs'");
+		$stmt->execute();
+
+		$rule = "";
+
+		while ($res = $stmt->fetch()) {
+			$rule = $res['nama_predikat'];
+		}
+
+		// print_r($rule);
+		return $rule;
 	}
 
 	function getReference($predicate) { //get reference table for a predicate
@@ -123,19 +154,19 @@
 		global $conn;
 
 		//get reference table for instance checking
-		$stmt = $conn->prepare("SELECT `reference` FROM rule_ref r, idb i, predikat p WHERE r.id_rule = i.id_aturan AND i.id_predikat = p.id_predikat AND p.nama_predikat = '$predicate'");
+		$stmt = $conn->prepare("SELECT `nama_predikat` FROM `predikat` WHERE id_predikat = (SELECT `target` FROM predikat p INNER JOIN br_statement br ON p.id_predikat = br.predikat WHERE p.nama_predikat = '$predicate')");
 		$stmt->execute();
 		$res = $stmt->fetch();
 		$reference = $res[0];
+		// echo $reference."\n";
 
-		//get attribute to be compared with
-		$stmt = $conn->prepare("SELECT attr_name FROM rule_attribute WHERE id_ref = '$reference'");
-		$stmt->execute();
-		
-		$target = array(); $i=0;
-		while($res = $stmt->fetch()) {
-			$target[$i] = $res['attr_name'];
-			$i++;
+		$bodies = collectRules($reference);
+		$queries = ruleToQuery($bodies, $reference, $cons);
+		// print_r($bodies);
+		// print_r($queries);
+
+		foreach ($queries as $name => $query) {
+			createTempTable($query, $name);
 		}
 
 		//get variable to be compared
@@ -147,13 +178,15 @@
 			$arg[$i] = $res['isi_argumen'];
 			$i++;
 		}
+		print_r($arg);
 		
-		$check = checkingQuery($reference, $predicate, $target, $arg);
+		// echo $predicate."\n";
+		$check = checkingQuery($reference, $predicate, $arg);
 
 		$stmt = $conn->prepare($check);
 		$stmt->execute();
 		$res = $stmt->fetchAll();
-		// print_r($res);
+		print_r($res);
 
 		//reporting using log file(s)
 		// while ($res = $stmt->fetch()) {

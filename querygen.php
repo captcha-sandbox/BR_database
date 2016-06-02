@@ -42,7 +42,14 @@
 	function getOnProperties($bodies) {
 		global $conn;
 		$predicate = $bodies[0]->getPredicate();
+		// $substitution = substituteVar($bodies);
+
+		// foreach ($substitution as $key => $data) {
+		// 	$substitution[$key] = substr($data, strpos($data, ".") + 1);
+		// }    
+
 		$args = array();
+		
 		$i = 0;
 		# get main predicate to be compared
 		foreach ($bodies as $body) {
@@ -52,7 +59,7 @@
 			}
 		}
 		//print_r($args);
-		echo $predicate."\n";
+		// echo $predicate."\n";
 		$res = array();
 		$i = 0;
 		# get attribute name associated to argument(s) name
@@ -62,7 +69,7 @@
 
 			$res[$args[$i]] = $body['attr_name'];
 			$i++;
-		}
+		} 
 		$on = array();
 		# get another predicate for comparator
 		$i = 0;
@@ -72,12 +79,21 @@
 			foreach ($bodies as $body) {
 				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
 						if(!isIDB($predicate)) {
-						//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
-						$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$prev[$body->getContent()];
-						//echo $on[$i]."\n";
+							if(!isIDB($body->getPredicate())) {
+								$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$prev[$body->getContent()];
+								//echo $on[$i]."\n";
+							}
+							else {
+								$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$val[$body->getContent()];
+							}
 						}
 						else {
-						$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$val[$body->getContent()];
+							if(!$isIDB($body->getPredicate())) {	
+								$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$prev[$body->getContent()];
+							}
+							else {
+								$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$val[$body->getContent()];
+							}
 						}
 					$i++;
 				}
@@ -87,18 +103,29 @@
 			foreach ($bodies as $body) {
 				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
 						if(!isIDB($predicate)) {
-						//echo $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()]."\n";
-						$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
-						//echo $on[$i]."\n";
-						}
+							if(!isIDB($body->getPredicate())) {
+									$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
+									//echo $on[$i]."\n";
+								}
+								else {
+									$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$body->getContent();
+								}
+							}
 						else {
-						$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$body->getContent();
-						}
+							if(!isIDB($body->getPredicate())) {
+									// print_r($substitution);
+									$substitution = getEDBAttributes($body->getPredicate(), $bodies);
+									$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$substitution[$body->getContent()];
+									// echo $res[$body->getContent()]."\n";
+								}
+								else {
+									$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$body->getContent();
+								}
+							}
 					$i++;
 				}
 			}
 		}
-		
 		// print_r($on);
 		return $on;
 	}
@@ -108,7 +135,7 @@
 		$substitution = substituteVar($bodies); //get variable substitute
 		$conditions = array(); //argument(s) for selection
 		$i = 0; $idx = 0;
-		
+
 		while($i < sizeof($bodies)) {
 			if(isComparator($bodies[$i]->getPredicate())) {
 				if(isVariable($bodies[$i+1]->getContent())) {
@@ -122,7 +149,7 @@
 			$i++;
 		}
 		// echo "This is condition \n";
-		print_r($conditions);
+		// print_r($conditions);
 		return $conditions;
 	}
 
@@ -213,11 +240,10 @@
 	}
 
 	function ruleToQuery($bodies, $predicate, $cons) {
-
 		$idb = getIDBList($predicate);
 		$idx = 0;
 		$queries = array();
-
+		
 		$i = 0;
 		while($i<sizeof($bodies)) {
 			if(hasVariant($idb[$idx])) {
@@ -282,16 +308,16 @@
 		// var_dump($stmt);
 	}
 
-	function checkingQuery($idb, $facts, $target, $arg) {
+	function checkingQuery($idb, $facts, $arg) {
 
 		$i = 0;
 		$condition = "";
-		while ($i<sizeof($target)) {
+		while ($i<sizeof($arg)) {
 			if($i == 0) {
-				$condition = $condition.$idb.".".$target[$i]." = ".$facts.".".$arg[$i];
+				$condition = $condition.$idb.".".$arg[$i]." = ".$facts.".".$arg[$i];
 			}
 			else {
-				$condition = $condition." AND ".$idb.".".$target[$i]." = ".$facts.".".$arg[$i];		
+				$condition = $condition." AND ".$idb.".".$arg[$i]." = ".$facts.".".$arg[$i];		
 			}
 			$i++;
 		}
@@ -321,23 +347,49 @@
 	// }
 	// print_r($cons);
 
-	$rules = getRules("BS2A");
-	print_r($rules);
-	$test = collectRules($rules[0]);
-	$head = getHead($rules[0]);
-	//print_r($head);
-	$queries = ruleToQuery($test, $rules[0], $cons);
-	// $test = getRuleBody($query->getPredicate());
+	$rules = array(); $i=0;
+	$statements = getStatement("PA0404");
+	print_r($statements);
+	foreach ($statements as $rule) {
+		$rules[$i] = getRules($rule);
+		$i++;
+	}
+	
+	$queries = array(); $j=0;
+	foreach ($rules as $rule) {
+		$test = collectRules($rule);
+	 	$queries[$j] = ruleToQuery($test, $rule, $cons);
+
+		$j++;
+	}
+
+	// $test = collectRules("check_BS2A");
 	// print_r($test);
+	// $head = getHead($rules[0]);
+
+	// $queries = ruleToQuery($test, "check_BS2A", $cons);
+	// $test = getRuleBody($query->getPredicate());
 	
  	$ref = generateRef($test);
  	getCurrentData("max24_sks");
- 	print_r($queries); 
- 		
-	foreach ($queries as $predicate => $query) {
+ 	// print_r($queries); 
+
+	// $idb = getIDBList("max24_sks");
+
+	// while($i<sizeof($queries)) {
+	// 	foreach ($queries as $predicate => $query) {
+	// 		createTempTable($query, $predicate);
+	// 	}
+	// }
+
+	$i = 0;
+	while($i<sizeof($queries)) {
+		foreach ($queries[$i] as $predicate => $query) {
 			createTempTable($query, $predicate);
+			$i++;
+		}
 	}
-	checkInstance($rules[0]);
+	checkInstance("max24_sks");
 
 	$conn = null;
 
