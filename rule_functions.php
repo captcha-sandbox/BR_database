@@ -105,6 +105,16 @@
 		}
 	}
 
+	function isNegation($body) {
+
+		if($body->isNegasi() == "TRUE") {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
 	function hasVariant($head) { //check if any rule has more than one statement 
 		global $conn;
 

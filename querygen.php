@@ -1,8 +1,5 @@
 <?php	
-	include "sql_connect.inc";
-	include "classes.php";
-	include "rule_functions.php";
-	include "checking_functions.php";
+
 
 	//Functions
 	function getTableRef($bodies) {
@@ -12,8 +9,10 @@
 		foreach ($bodies as $body) {
 			$current = $body->getPredicate();
 			if(!in_array($current, $ref) && !isOperator($current)) { //check if element is already exist in array or a comparator
-				$ref[$i] = $body->getPredicate();
-				$i++;
+				if(!isNegation($body)) {
+					$ref[$i] = $body->getPredicate();
+					$i++;
+				}
 			}
 		}
 
@@ -40,7 +39,7 @@
 
 	// needed for performance optimization 
 	function getOnProperties($bodies) {
-		global $conn;
+		global $conn; 
 		$predicate = $bodies[0]->getPredicate();
 		// $substitution = substituteVar($bodies);
 
@@ -153,35 +152,174 @@
 		return $conditions;
 	}
 
-	function getQueryVal($predicate, $bodies, $cons) {
+	function getQueryVal($head, $sub, $cons) {
+		global $conn;
 
-		$substitution = substituteVar($bodies);
-		$value = assignConstant($predicate, $substitution, $cons); //get value from user's input
-		$values =array(); //condition from user input
+		$id = $head[0]->getRuleId();
+		$res = array();
+		$stmt = $conn->prepare("SELECT `isi_argumen` FROM `argumen_head` WHERE id_rule = $id");
+		$stmt->execute();
 		
-		$idx = 0;
-		foreach($value as $var => $arg) {
-			if($arg != $substitution[$var]) {
-				$values[$idx] = $substitution[$var]." = ".$arg;
-				$idx++;
+		while($body = $stmt->fetch()) {
+			$arg = $body['isi_argumen'];
+			$res[$arg] = $sub[$arg];
+		}
+
+		$values = array(); $i=0;
+		if(!empty($cons)) { //only executed when constant is provided
+			foreach ($res as $arg => $attr) {
+				if(!empty($cons[$arg])) {
+				$values[$i] = $attr." = ".$cons[$arg];
+				$i++;
+			}
 			}
 		}
-		//print_r($values);
+		// print_r($values);
 		return $values;
 	}
+
+	function getConstantVal($head, $sub, $cons) {
+		global $conn;
+
+		$id = $head[0]->getRuleId();
+		$res = array();
+		$stmt = $conn->prepare("SELECT `isi_argumen` FROM `argumen_head` WHERE id_rule = $id");
+		$stmt->execute();
+		
+		while($body = $stmt->fetch()) {
+			$arg = $body['isi_argumen'];
+			$res[$arg] = $sub[$arg];
+		}
+
+		$values = array(); $i=0;
+		if(!empty($cons)) { //only executed when constant is provided
+			foreach ($res as $arg => $attr) {
+				if(!empty($cons[$arg])) {
+				$values[$i] = $arg." = ".$cons[$arg];
+				$i++;
+			}
+			}
+		}
+		// print_r($values);
+		return $values;
+
+	}
+
+	function getNegation($bodies) {
+		global $conn;
+
+		$predicate = $bodies[0]->getPredicate();
+		$args = array();
+		
+		$i = 0;
+		# get main predicate to be compared
+		foreach ($bodies as $body) {
+			if($body->getPredicate() == $predicate) {
+				$args[$i] = $body->getContent();
+				$i++;
+			}
+		}
+
+		$res = array();
+		$i = 0;
+		# get attribute name associated to argument(s) name
+		$stmt = $conn->prepare("SELECT `attr_name` FROM `reference` b INNER JOIN `ref_attribute` a ON b.id_ref = a.id_ref WHERE b.id_ref = '$predicate'");
+		$stmt->execute();
+		while($body = $stmt->fetch()) {
+
+			$res[$args[$i]] = $body['attr_name'];
+			$i++;
+		}
+
+		$negation = array(); $i=0;
+		$neg_arg = array();
+
+		foreach ($bodies as $body) {
+			if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate()) && isNegation($body)) {
+
+				$neg_arg[$i] = $body->getPredicate(); //get negated predicate name
+				if(!isIDB($predicate)) {
+					if(!isIDB($body->getPredicate())) {
+							$negation[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
+							//echo $on[$i]."\n";
+						}
+						else {
+							$negation[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$body->getContent();
+						}
+					}
+				else {
+					if(!isIDB($body->getPredicate())) {
+							// print_r($substitution);
+							$substitution = getEDBAttributes($body->getPredicate(), $bodies);
+							$negation[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$substitution[$body->getContent()];
+							// echo $res[$body->getContent()]."\n";
+						}
+						else {
+							$negation[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$body->getContent();
+						}
+					}
+				$i++;
+			}
+		}
+
+		$args = mergeNegation($neg_arg, $negation);
+		$query = negativeQuery($args);
+		return $query;
+	}
+
+	function mergeNegation($predicate, $arg) { //merge conditon for negated predicate
+
+		$negation = array();
+		$i = 0;
+
+		while($i<sizeof($arg)) {
+			$temp = array();
+			$neg_predicate = $predicate[$i];
+			while ($neg_predicate == $predicate[$i]) {
+				array_push($temp, $arg[$i]);
+				$i++;
+			}
+			$negation[$predicate[$i-1]] = $temp;
+		}
+
+		// print_r($negation);
+		return $negation;
+	}
+
+	function negativeQuery($negation) { // generate negative query from argument(s)
+
+		$neg_query = array(); $j=0;
+	 	foreach ($negation as $predicate => $arg) {
+	 		$i = 0;
+	 		$neg_cond = "";
+	 		while ($i<sizeof($arg)) {
+	 			if($i<1) {
+		 			$neg_cond = $neg_cond.$arg[$i];
+		 		}
+		 		else {
+		 			$neg_cond = $neg_cond." AND ".$arg[$i];
+		 		}
+		 		$i++;
+	 		}
+
+	 		$neg_query[$j] = "NOT EXISTS (SELECT * FROM ".$predicate." WHERE ".$neg_cond.")";
+	 		$j++;
+	 	}
+	 	return $neg_query;
+	} 
 
 	function generateQuery($predicate, $bodies, $cons) {
 
 		//get head argument
 		$head = getHead($predicate);
-		$sub = substituteVar($bodies);
+		$sub = substituteVar($bodies); 
 
 		#query generator
 	 	$from = getTableRef($bodies);
-	 	$select = getProjection($head, $sub);
+	 	$select = getProjection($head, $sub); //print_r($select);
 	 	$join = getOnProperties($bodies);
 	 	$where = getSelection($bodies);
-	 	$value = getQueryVal($predicate, $bodies, $cons);
+	 	$negation = getNegation($bodies);
 	 	// print_r($join);
 	 	// print_r($select);
 
@@ -227,12 +365,28 @@
 	 	}
 
 	 	$constant = ""; //combine input from user
-	 	for($i=0; $i<sizeof($value); $i++) {
-	 		$constant = $constant." AND ".$value[$i];
+	 	if(!empty($cons)) { //only executed when constant is defined
+	 		$value = getQueryVal($head, $sub, $cons);
+	 		for($i=0; $i<sizeof($value); $i++) {
+	 			$constant = $constant." AND ".$value[$i];
+	 		}
+	 	}
+	 	// echo $constant."\n"
+
+	 	$neg_query = ""; 
+	 	for($i=0; $i<sizeof($negation); $i++) {
+	 		if($i<1) {
+	 			$neg_query = $neg_query.$negation[$i];
+	 		}
+	 		else {
+	 			$neg_query = $neg_query." AND ".$negation[$i];
+	 		}
 	 	}
 
- 		// $generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition." ".$constant;
-	 	$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$on." ".$condition;
+// WHERE NOT EXISTS (SELECT * FROM nr_lengkap WHERE nr.nim = nr_lengkap.X AND nr.semester = nr_lengkap.Y)
+	 		$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition." ".$constant;	
+
+	 	
 	 	// echo ($generate)."\n";
 	 	
 	 	
@@ -243,7 +397,7 @@
 		$idb = getIDBList($predicate);
 		$idx = 0;
 		$queries = array();
-		
+
 		$i = 0;
 		while($i<sizeof($bodies)) {
 			if(hasVariant($idb[$idx])) {
@@ -295,7 +449,10 @@
 	function createTempTable($query, $predicate) {
 		global $conn;
 
-		$stmt = $conn->prepare("CREATE TEMPORARY TABLE IF NOT EXISTS $predicate AS $query");
+		$stmt = $conn->prepare("DROP TEMPORARY TABLE IF EXISTS $predicate");
+		$stmt->execute();
+
+		$stmt = $conn->prepare("CREATE TEMPORARY TABLE $predicate AS $query");
 		$stmt->execute();
 		// var_dump($stmt);
 	}
@@ -326,71 +483,31 @@
 		$target = "(SELECT * FROM $facts WHERE $condition)";
 		// $target = "SELECT * FROM $facts";
 		$check = $source." WHERE NOT EXISTS ".$target;
-		echo $check."\n";
+		// echo $check."\n";
 		return $check;
 
 	}
 
+	function countMatch($idb, $cons) {
+
+		$bodies = collectRules($idb);
+		$head = getHead($idb);
+		$sub = substituteVar(end($bodies));
+
+		$constant = "";
+		$value = getConstantVal($head, $sub, $cons);
+ 		for($i=0; $i<sizeof($value); $i++) {
+ 			$constant = $constant." AND ".$value[$i];
+ 		}
+
+ 		$constant = substr($constant, 4);
+		$query = "SELECT COUNT(*) FROM ".$idb." WHERE ".$constant;
+		echo $query."\n";
+		return $query;
+	}
+
 	//End of functions
 
-	//Main program
-	// $query = new Query();
-	//$query = parseArgument("orangtua(John,Michael)");
-
-	#condition example 
-	// $query = parseRule("max24_sks(13512075,3)");
-	$cons = array();
-	// $var = $query->getConditions();
-	// for ($i=0; $i<sizeof($var); $i++) {
-	// 	$j = $i+1; 
-	// 	$cons[$i] = $var['argumen_'.$j];
-	// }
-	// print_r($cons);
-
-	$rules = array(); $i=0;
-	$statements = getStatement("PA0404");
-	print_r($statements);
-	foreach ($statements as $rule) {
-		$rules[$i] = getRules($rule);
-		$i++;
-	}
 	
-	$queries = array(); $j=0;
-	foreach ($rules as $rule) {
-		$test = collectRules($rule);
-	 	$queries[$j] = ruleToQuery($test, $rule, $cons);
-
-		$j++;
-	}
-
-	// $test = collectRules("check_BS2A");
-	// print_r($test);
-	// $head = getHead($rules[0]);
-
-	// $queries = ruleToQuery($test, "check_BS2A", $cons);
-	// $test = getRuleBody($query->getPredicate());
-	
- 	$ref = generateRef($test);
- 	getCurrentData("max24_sks");
- 	// print_r($queries); 
-
-	// $idb = getIDBList("max24_sks");
-
-	// while($i<sizeof($queries)) {
-	// 	foreach ($queries as $predicate => $query) {
-	// 		createTempTable($query, $predicate);
-	// 	}
-	// }
-
-	$i = 0;
-	while($i<sizeof($queries)) {
-		foreach ($queries[$i] as $predicate => $query) {
-			createTempTable($query, $predicate);
-			$i++;
-		}
-	}
-	checkInstance("max24_sks");
-
-	$conn = null;
 
 ?>

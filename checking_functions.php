@@ -128,6 +128,21 @@
 		return $ref;
 	}
 
+	function getCurrentRow($cons) {
+		global $conn;
+
+		$values = "";
+		if(!empty($cons)) { //only executed when constant is provided
+			foreach ($cons as $idx => $arg) {
+				if(!isVariable($idx)) {
+					$values =  $values.$arg." ";
+				}
+			}
+		}
+		// print_r($values);
+		return $values;
+	}
+
 	function generateData($idb) {
 
 		//get rule id
@@ -186,7 +201,7 @@
 		$stmt = $conn->prepare($check);
 		$stmt->execute();
 		$res = $stmt->fetchAll();
-		print_r($res);
+		// print_r($res);
 
 		//reporting using log file(s)
 		// while ($res = $stmt->fetch()) {
@@ -194,25 +209,103 @@
 		// 	writeReport($res["nim"]);
 		// }
 
-		// $stmt = $conn->prepare("SELECT * FROM max24_sks");
+		// $stmt = $conn->prepare("SELECT * FROM last_nr");
 		// $stmt->execute();
-		// $res = $stmt->fetchAll();
-		// print_r($res);
-
+		// $last = $stmt->fetchAll();
+		// print_r($last);
 
 		// $stmt = $conn->prepare("SELECT * FROM last_nr");
 		// $stmt->execute();
 		// $res = $stmt->fetchAll();
 		// print_r($res);
+		return $res;
 	}
 
-	function writeReport($result) {
+	function generateTarget($predicate) {
+		global $conn;
 
-		$date = date("F j, Y, g:i a");
-		$log = $result." violates business rule \n";
+		//get reference table for instance checking
+		$stmt = $conn->prepare("SELECT `nama_predikat` FROM `predikat` WHERE id_predikat = (SELECT `target` FROM predikat p INNER JOIN br_statement br ON p.id_predikat = br.predikat WHERE p.nama_predikat = '$predicate')");
+		$stmt->execute();
+		$res = $stmt->fetch();
+		$reference = $res[0];
 
-		$put = $date." ".$log;
+		$bodies = collectRules($reference);
+		$queries = ruleToQuery($bodies, $reference, $cons);
 
+		return $queries;
+	}
+
+	function prepareChecking($predicate) { //prepare all tables(s) needed for comparation
+		global $conn;
+
+		#generate constant to be checked
+		$ref = generateTarget($predicate);
+
+		foreach ($ref as $name => $query) {
+			createTempTable($query, $name);
+		}
+
+		$stmt = $conn->prepare("SELECT * FROM $name");
+		$stmt->execute();
+		$cons = $stmt->fetchAll();
+		print_r($cons); 
+
+		#generate table based on rule and constant
+		$queries = array(); $j=0;
+		foreach ($cons as $value) {
+			$test = collectRules($predicate);
+			$queries[$j] = ruleToQuery($test, $predicate, $value);
+			$j++;
+		}
+		print_r($queries);
+
+		#generate query for checking
+		$check = array(); 
+		$instance = array();
+		$i=0;
+		foreach ($cons as $constant) {
+			$check[$i] = countMatch($predicate, $constant);
+			$instance[$i] = getCurrentRow($constant);
+			$i++;
+		}
+
+		#instance checking
+		$idx = 0; $j=0;
+		$result = array(); $x=0;
+		while ($idx<sizeof($queries)) {
+			foreach ($queries[$idx] as $table => $query) {
+				createTempTable($query, $table);
+			}
+
+			$stmt = $conn->prepare($check[$j]); // get instance to be tested
+			$stmt->execute();
+			$res = $stmt->fetch();
+			if($res[0] == 0) {
+				$result[$x] = "Instance ".$instance[$j]."violated business rule \n";
+				$x++;
+			}
+
+			$j++;
+			$idx++;
+		}
+		return $result;
+	}
+
+	function writeReport($result, $br) {
+
+		$date = date("F j, Y, g:i a")."\n";
+		// $subject = "Instance checking for business rule ".$br."\n\n";
+
+		$i=0; $log = "";
+		while ($i<sizeof($result)) {
+			$log = $log.$result[$i]."\n";
+			$i++;
+		}
+
+		$put = $date.$subject.$log;
+
+		//file_put_contents('log/log_'.date("j.n.Y").'.txt', $put, FILE_APPEND);
 		file_put_contents('log/log_'.date("j.n.Y").'.txt', $put, FILE_APPEND);
 	}
 ?>
