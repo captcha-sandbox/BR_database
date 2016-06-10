@@ -115,6 +115,21 @@
 		}
 	}
 
+	function isMainRule($predicate) { //check whether a predicate is a main rule or not
+		global $conn;
+
+		$stmt = $conn->prepare("SELECT COUNT(*) FROM predikat p INNER JOIN br_statement br ON p.id_predikat = br.predikat WHERE p.nama_predikat = '$predicate'");
+		$stmt->execute();
+
+		$res = $stmt->fetch();
+		if($res[0] > 0) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
 	function hasVariant($head) { //check if any rule has more than one statement 
 		global $conn;
 
@@ -177,6 +192,19 @@
 				else {
 					$on[$bodies[$j]->getContent()] = $bodies[$j]->getContent();
 				}
+			}
+			$j++;
+		}
+		return $on;
+	}
+
+	function getPreviousVal2($bodies) {
+
+		$on = array(); $j=0;
+		while ($j<sizeof($bodies)) {
+			if($bodies[$j]->getPredicate() == "previous") {
+				$on[$bodies[$j]->getContent()] = $bodies[$j+1]->getContent();
+				$j++;
 			}
 			$j++;
 		}

@@ -241,9 +241,9 @@
 
 		#generate constant to be checked
 		$ref = generateTarget($predicate);
-
+		print_r($ref);
 		foreach ($ref as $name => $query) {
-			createTempTable($query, $name);
+			createView($query, $name);
 		}
 
 		$stmt = $conn->prepare("SELECT * FROM $name");
@@ -258,7 +258,7 @@
 			$queries[$j] = ruleToQuery($test, $predicate, $value);
 			$j++;
 		}
-		print_r($queries);
+		// print_r($queries);
 
 		#generate query for checking
 		$check = array(); 
@@ -275,7 +275,7 @@
 		$result = array(); $x=0;
 		while ($idx<sizeof($queries)) {
 			foreach ($queries[$idx] as $table => $query) {
-				createTempTable($query, $table);
+				createView($query, $table);
 			}
 
 			$stmt = $conn->prepare($check[$j]); // get instance to be tested
@@ -284,7 +284,7 @@
 			if($res[0] == 0) {
 				$result[$x] = "Instance ".$instance[$j]."violated business rule \n";
 				$x++;
-			}
+			} print_r($res);
 
 			$j++;
 			$idx++;

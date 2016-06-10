@@ -72,35 +72,35 @@
 		$on = array();
 		# get another predicate for comparator
 		$i = 0;
-		if(hasPrevious($bodies, $args)) {
-			$prev = getPrevious($res, $bodies, $args);
-			$val = getPreviousVal($bodies, $args);
+		// if(hasPrevious($bodies, $args)) {
+		// 	$prev = getPrevious($res, $bodies, $args);
+		// 	$val = getPreviousVal($bodies, $args);
+		// 	foreach ($bodies as $body) {
+		// 		if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
+		// 				if(!isIDB($predicate)) {
+		// 					if(!isIDB($body->getPredicate())) {
+		// 						$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$prev[$body->getContent()];
+		// 						//echo $on[$i]."\n";
+		// 					}
+		// 					else {
+		// 						$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$val[$body->getContent()];
+		// 					}
+		// 				}
+		// 				else {
+		// 					if(!$isIDB($body->getPredicate())) {	
+		// 						$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$prev[$body->getContent()];
+		// 					}
+		// 					else {
+		// 						$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$val[$body->getContent()];
+		// 					}
+		// 				}
+		// 			$i++;
+		// 		}
+		// 	}
+		// }
+		// else {
 			foreach ($bodies as $body) {
-				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
-						if(!isIDB($predicate)) {
-							if(!isIDB($body->getPredicate())) {
-								$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$prev[$body->getContent()];
-								//echo $on[$i]."\n";
-							}
-							else {
-								$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$val[$body->getContent()];
-							}
-						}
-						else {
-							if(!$isIDB($body->getPredicate())) {	
-								$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$prev[$body->getContent()];
-							}
-							else {
-								$on[$i] = $predicate.".".$body->getContent()." = ".$body->getPredicate().".".$val[$body->getContent()];
-							}
-						}
-					$i++;
-				}
-			}
-		}
-		else {
-			foreach ($bodies as $body) {
-				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate())) {
+				if(($body->getPredicate() != $predicate) && (in_array($body->getContent(), $args)) && !isOperator($body->getPredicate()) && !isNegation($body)) {
 						if(!isIDB($predicate)) {
 							if(!isIDB($body->getPredicate())) {
 									$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
@@ -124,7 +124,7 @@
 					$i++;
 				}
 			}
-		}
+		// }
 		// print_r($on);
 		return $on;
 	}
@@ -152,7 +152,7 @@
 		return $conditions;
 	}
 
-	function getQueryVal($head, $sub, $cons) {
+	function getQueryVal($head, $bodies, $sub, $cons) {
 		global $conn;
 
 		$id = $head[0]->getRuleId();
@@ -167,10 +167,22 @@
 
 		$values = array(); $i=0;
 		if(!empty($cons)) { //only executed when constant is provided
+			$val = getPreviousVal2($bodies); //get previous value if any
 			foreach ($res as $arg => $attr) {
 				if(!empty($cons[$arg])) {
-				$values[$i] = $attr." = ".$cons[$arg];
-				$i++;
+					if(hasPrevious($bodies)) {
+						if(!empty($val[$arg])) {
+							$values[$i] = $attr." = ".$cons[$arg]."-".$val[$arg];
+						}
+						else {
+							$values[$i] = $attr." = ".$cons[$arg];
+						}
+						$i++;
+					}
+					else {
+						$values[$i] = $attr." = ".$cons[$arg];
+						$i++;
+					}
 			}
 			}
 		}
@@ -195,9 +207,9 @@
 		if(!empty($cons)) { //only executed when constant is provided
 			foreach ($res as $arg => $attr) {
 				if(!empty($cons[$arg])) {
-				$values[$i] = $arg." = ".$cons[$arg];
-				$i++;
-			}
+					$values[$i] = $arg." = ".$cons[$arg];
+					$i++;
+				}
 			}
 		}
 		// print_r($values);
@@ -269,16 +281,24 @@
 
 	function mergeNegation($predicate, $arg) { //merge conditon for negated predicate
 
-		$negation = array();
+		$negation = array(); 
 		$i = 0;
 
 		while($i<sizeof($arg)) {
 			$temp = array();
 			$neg_predicate = $predicate[$i];
+
 			while ($neg_predicate == $predicate[$i]) {
 				array_push($temp, $arg[$i]);
-				$i++;
+				if($i < sizeof($predicate)-1) {
+					$i++;
+				}
+				else {
+					$i = sizeof($predicate);
+					break;
+				}
 			}
+
 			$negation[$predicate[$i-1]] = $temp;
 		}
 
@@ -346,7 +366,7 @@
 	 	$on = ""; //combine join attribute
 		for($i=0; $i<sizeof($join); $i++) {
 			
-		 		if($i<1) {
+		 		if($i<1 && empty($negation)) {
 		 			$on = $on.$join[$i];
 		 		}
 		 		else {
@@ -366,7 +386,7 @@
 
 	 	$constant = ""; //combine input from user
 	 	if(!empty($cons)) { //only executed when constant is defined
-	 		$value = getQueryVal($head, $sub, $cons);
+	 		$value = getQueryVal($head, $bodies, $sub, $cons);
 	 		for($i=0; $i<sizeof($value); $i++) {
 	 			$constant = $constant." AND ".$value[$i];
 	 		}
@@ -384,7 +404,14 @@
 	 	}
 
 // WHERE NOT EXISTS (SELECT * FROM nr_lengkap WHERE nr.nim = nr_lengkap.X AND nr.semester = nr_lengkap.Y)
+	 	$generate = "";
+	 	if(isMainRule($predicate)) {
+	 		$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition;	
+	 	}
+	 	else {
 	 		$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition." ".$constant;	
+	 	}
+ 			
 
 	 	
 	 	// echo ($generate)."\n";
@@ -501,7 +528,7 @@
  		}
 
  		$constant = substr($constant, 4);
-		$query = "SELECT COUNT(*) FROM ".$idb." WHERE ".$constant;
+		$query = "SELECT COUNT(*) FROM ".$idb;//." WHERE ".$constant;
 		echo $query."\n";
 		return $query;
 	}

@@ -29,7 +29,7 @@
 	}
 
 	// print_r($rules);
-	// $result = prepareChecking("max24_sks");
+	$result = prepareChecking("max24_sks");
 	// writeReport($result, "BS2A");
 	// checkInstance2("max24_sks");
 
@@ -42,22 +42,22 @@
 	// 	$j++;
 	// }
 
-	$test = collectRules("last_nr2");
+	// $test = collectRules("last_nr2");
 	// print_r($test);
 	// $head = getHead($rules[0]);
 
-	$queries = ruleToQuery($test, "last_nr2", $cons);
+	// $queries = ruleToQuery($test, "last_nr2", $cons);
 	// $test = getRuleBody($query->getPredicate());
 
- 	print_r($queries); 
+ 	// print_r($queries); 
 
 	// $idb = getIDBList("max24_sks");
 
-	//while($i<sizeof($queries)) {
-		foreach ($queries as $predicate => $query) {
-			// createTempTable($query, $predicate);
-		}
-	//}
+	// while($i<sizeof($queries)) {
+	// 	foreach ($queries as $predicate => $query) {
+	// 		createTempTable($query, $predicate);
+	// 	}
+	// }
 
 	// $i = 0;
 	// while($i<sizeof($queries)) {
