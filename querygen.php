@@ -487,7 +487,7 @@
 	function createView($query, $predicate) {
 		global $conn;
 
-		$stmt = $conn->prepare("CREATE OR REPLACE VIEW $predicate AS $query");
+		$stmt = $conn->prepare("CREATE OR REPLACE VIEW $predicate AS $query"); //print_r($stmt);
 		$stmt->execute();
 		// var_dump($stmt);
 	}

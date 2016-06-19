@@ -30,7 +30,7 @@
 
 	// print_r($rules);
 	$result = prepareChecking("max24_sks");
-	// writeReport($result, "BS2A");
+	writeReport($result, "BS2A");
 	// checkInstance2("max24_sks");
 
 	// $queries = array(); $j=0;

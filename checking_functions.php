@@ -255,10 +255,12 @@
 		$queries = array(); $j=0;
 		foreach ($cons as $value) {
 			$test = collectRules($predicate);
+			generateRef($test); 
 			$queries[$j] = ruleToQuery($test, $predicate, $value);
 			$j++;
 		}
-		// print_r($queries);
+		print_r($queries);
+
 
 		#generate query for checking
 		$check = array(); 
@@ -295,17 +297,22 @@
 	function writeReport($result, $br) {
 
 		$date = date("F j, Y, g:i a")."\n";
-		// $subject = "Instance checking for business rule ".$br."\n\n";
+		$subject = "Instance checking for business rule ".$br."\n\n";
 
 		$i=0; $log = "";
-		while ($i<sizeof($result)) {
-			$log = $log.$result[$i]."\n";
-			$i++;
+		if(sizeof($result)>0) {
+			while ($i<sizeof($result)) {
+				$log = $log.$result[$i]."\n";
+				$i++;
+			}
+		}
+		else {
+			$log = "No instance violated business rule \n";
 		}
 
 		$put = $date.$subject.$log;
 
 		//file_put_contents('log/log_'.date("j.n.Y").'.txt', $put, FILE_APPEND);
-		file_put_contents('log/log_'.date("j.n.Y").'.txt', $put, FILE_APPEND);
+		file_put_contents('log/log_'.date("j.n.Y").'.txt', $put);
 	}
 ?>
