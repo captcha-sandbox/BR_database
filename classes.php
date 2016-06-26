@@ -8,6 +8,7 @@
 		var $predicate;
 		var $attributes;
 		var $conditions;
+		var $negasi;
 
 		function getPredicate() {
 			return $this->predicate;
@@ -25,6 +26,10 @@
 			return $this->attributes;
 		}
 
+		function getNegasi() {
+			return $this->negasi;
+		}
+
 		function setAttributes($attr) {
 			$this->attributes = $attr;
 		}
@@ -39,6 +44,10 @@
 
 		function setConditions($cond) {
 			$this->conditions = $cond;	
+		}
+
+		function setNegasi($val) {
+			$this->negasi = $val;
 		}
 	}
 
@@ -169,5 +178,46 @@
 		function setContent($content) {
 			$this->content = $content;
 		}
+	}
+
+	class NestedSet
+	{
+		var $id;
+		var $arg;
+		var $left;
+		var $right;
+
+		function getId() {
+			return $this->id;
+		}
+
+		function getArg() {
+			return $this->arg;
+		}
+
+		function getLeft() {
+			return $this->left();
+		}
+
+		function getRight() {
+			return $this->right;
+		}
+
+		function setId($num) {
+			$this->id = $num;
+		}
+
+		function setArg($name) {
+			$this->arg = $name;
+		}
+
+		function setLeft($num) {
+			$this->left = $num;
+		}
+
+		function setRight($num) {
+			$this->right = $num;
+		}
+
 	}
 ?>

@@ -1,6 +1,4 @@
 <?php	
-
-
 	//Functions
 	function getTableRef($bodies) {
 		$ref = array();
@@ -411,12 +409,7 @@
 	 	else {
 	 		$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition." ".$constant;	
 	 	}
- 			
-
-	 	
 	 	// echo ($generate)."\n";
-	 	
-	 	
 	 	return $generate;
 	}
 
@@ -533,6 +526,41 @@
 		return $query;
 	}
 
+	function headQuery($rulehead, $id) { 
+		global $conn;
+
+		$queries = array();
+
+		$stmt = $conn->prepare("SELECT MAX(id_aturan) FROM idb");
+		$stmt->execute();
+		$max = $stmt->fetch();
+
+		//insert predicate head
+		$rule_id = $max[0]+1;
+		$predicate = "INSERT INTO idb(id_aturan, id_predikat) VALUES (".$rule_id.", ".$id.")";
+		$queries[0] = $predicate;
+
+		//insert argument head
+		$args = $rulehead->getConditions();
+		$i=0;
+		while ($i<sizeof($args)) {
+			$arg = "INSERT INTO argumen_head(id_rule, urutan, isi_argumen) VALUES (".$rule_id.", ".($i+1).", ".$args[$i+1].")";
+			$queries[$i+1] = $arg;
+			$i++;
+		}
+		
+		print_r($queries);
+	}
+
+	function bodyQuery($rulebody) { //insert rule body into database
+		global $conn;
+
+		$queries = array();
+
+		$stmt = $conn->prepare("SELECT MAX(id_aturan) FROM idb");
+		$stmt->execute();
+		$max = $stmt->fetch();
+	}
 	//End of functions
 
 	
