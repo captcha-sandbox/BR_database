@@ -2,6 +2,7 @@
 	
 	include "sql_connect.inc";
 	include "classes.php";
+	include "parser.php";
 	include "rule_functions.php";
 	include "checking_functions.php";
 	include "querygen.php";
@@ -29,8 +30,8 @@
 	}
 
 	// print_r($rules);
-	$result = prepareChecking("max24_sks");
-	writeReport($result, "BS2A");
+	#$result = prepareChecking("max24_sks");
+	#writeReport($result, "BS2A");
 	// checkInstance2("max24_sks");
 
 	// $queries = array(); $j=0;
@@ -69,6 +70,11 @@
 	// $cons = checkInstance("max24_sks");
 	// print_r($cons);
 
-	$conn = null;
+	// $conn = null;
 
+	identifyRule("last_nr(x,y) :- nr(x,y,z), ~nr_lengkap(x,y), previous(y,1), y<1, x<>y");
+	// $a = infixToPrefix("y<z+2");
+	// buildNestedElmt($a);
+
+	$conn = null;
 ?>

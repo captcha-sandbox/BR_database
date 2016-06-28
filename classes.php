@@ -196,7 +196,7 @@
 		}
 
 		function getLeft() {
-			return $this->left();
+			return $this->left;
 		}
 
 		function getRight() {

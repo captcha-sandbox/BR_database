@@ -536,7 +536,11 @@
 		$max = $stmt->fetch();
 
 		//insert predicate head
-		$rule_id = $max[0]+1;
+		$rule_id = 1;
+		if(!empty($max)) {
+			$rule_id = $max[0]+1;
+		}
+
 		$predicate = "INSERT INTO idb(id_aturan, id_predikat) VALUES (".$rule_id.", ".$id.")";
 		$queries[0] = $predicate;
 
@@ -544,15 +548,16 @@
 		$args = $rulehead->getConditions();
 		$i=0;
 		while ($i<sizeof($args)) {
-			$arg = "INSERT INTO argumen_head(id_rule, urutan, isi_argumen) VALUES (".$rule_id.", ".($i+1).", ".$args[$i+1].")";
+			$arg = "INSERT INTO argumen_head(id_rule, urutan, isi_argumen) VALUES (".$rule_id.", ".($i+1).", '".$args[$i+1]."')";
 			$queries[$i+1] = $arg;
 			$i++;
 		}
 		
-		print_r($queries);
+		// print_r($queries);
+		return $queries;
 	}
 
-	function bodyQuery($rulebody) { //insert rule body into database
+	function bodyQuery($rulebody, $id, $order) { //insert rule body into database
 		global $conn;
 
 		$queries = array();
@@ -560,7 +565,62 @@
 		$stmt = $conn->prepare("SELECT MAX(id_aturan) FROM idb");
 		$stmt->execute();
 		$max = $stmt->fetch();
+
+		//insert predicate body
+		$rule_id = 1;
+		if(!empty($max)) {
+			$rule_id = $max[0]+1;
+		}
+
+		$negasi = $rulebody->getNegasi();
+		$predicate = "INSERT INTO body_idb(id_aturan, urutan_body, predikat, is_negasi) VALUES (".$rule_id.", ".$order.", ".$id.", '".$negasi."')";
+		$queries[0] = $predicate;
+
+		//insert argument body
+		$args = $rulebody->getConditions();
+		$i=0;
+		while ($i<sizeof($args)) {
+			$arg = "INSERT INTO argumen_body(id_aturan, urutan_body, urutan_argumen, isi_argumen) VALUES (".$rule_id.", ".$order.", ".($i+1).", '".$args[$i+1]."')";
+			$queries[$i+1] = $arg;
+			$i++;
+		}
+		// print_r($queries);
+		return $queries;
 	}
+
+	function exprQuery($nested, $order) {
+		global $conn;
+
+		$queries = array();
+
+		$stmt = $conn->prepare("SELECT MAX(id_aturan) FROM idb");
+		$stmt->execute();
+		$max = $stmt->fetch();
+
+		//insert predicate body
+		$rule_id = 1;
+		if(!empty($max)) {
+			$rule_id = $max[0]+1;
+		}
+		
+		$predicate = "INSERT INTO body_idb(id_aturan, urutan_body, predikat, is_negasi) VALUES (".$rule_id.", ".$order.", NULL, 'FALSE')";
+		$queries[0] = $predicate;
+
+		$i=0;
+		while ($i<sizeof($nested)) {
+			$node = $nested[$i]->getArg();
+			$left = $nested[$i]->getLeft();
+			$right = $nested[$i]->getRight();
+
+			$arg = "INSERT INTO ekspresi(id_aturan, urutan_body, exp_id, argumen, leftnum, rightnum) VALUES (".$rule_id.", ".$order.", ".($i+1).", '".$node."', ".$left.", ".$right.")";
+			$queries[$i+1] = $arg;
+			$i++;
+		}
+		
+		// print_r($queries);
+		return $queries;
+	}
+
 	//End of functions
 
 	
