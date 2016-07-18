@@ -21,17 +21,18 @@
 	// }
 	// print_r($cons);
 
-	$rules = array(); $i=0;
-	$statements = getStatement("PA0404");
-	print_r($statements);
-	foreach ($statements as $rule) {
-		$rules[$i] = getRules($rule);
-		$i++;
-	}
+	// $rules = array(); $i=0;
+	// $statements = getStatement("PA0404");
+	// print_r($statements);
+	// foreach ($statements as $rule) {
+	// 	$rules[$i] = getRules($rule);
+	// 	$i++;
+	// }
 
 	// print_r($rules);
-	#$result = prepareChecking("max24_sks");
-	#writeReport($result, "BS2A");
+	//generateTarget("max24_sks");
+	$result = prepareChecking("max24_sks");
+	writeReport($result, "BS2A");
 	// checkInstance2("max24_sks");
 
 	// $queries = array(); $j=0;
@@ -72,8 +73,11 @@
 
 	// $conn = null;
 
-	identifyRule("last_nr(x,y) :- nr(x,y,z), ~nr_lengkap(x,y), previous(y,1), y<1, x<>y");
-	// $a = infixToPrefix("y<z+2");
+	// identifyRule("last_nr(x,y) :- nr(x,y,z), ~nr_lengkap(x,y), previous(y,1), y<1, x='s2'");
+	// identifyRule("max24_sks(x,y) :- mhs_s1(x), last_nr(x,y,z), z>=3.25");
+	// buildRule("last_nr");
+	// buildRule("mhs_s1"); //prefixToInfix(getExpression(7));
+	// $a = infixToPrefix("y<z+2"); prefixToInfix("<y+z2");
 	// buildNestedElmt($a);
 
 	$conn = null;

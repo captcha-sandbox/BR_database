@@ -1,5 +1,54 @@
 <?php
 	include "sql_connect.inc";
+	
+	function buildRule($predicate) { //build rule body from existed data
+
+		$head = getHead($predicate);
+		$bodies = getRuleBody($predicate);
+		// $expr = getRuleExpr($predicate);
+		print_r($bodies);
+		$predicates = array();
+
+		$p_head = mergeHead($head); 
+		// print_r($p_head);
+		
+		$i=0;
+		if(is_array($bodies[0])) {
+			foreach ($bodies as $body) {
+				$predicates[$i] = mergeBody($body);	
+				$i++;
+			}//print_r($predicates);
+		}
+		else {
+			$predicates[$i] = mergeBody($bodies);
+		}
+			
+		// print_r($expr);
+
+		$rule = array(); $idx=0;
+		foreach ($predicates as $body) { //combine rule head and body
+			$i=0; 
+			$p_body = "";
+
+			while ($i<sizeof($body)) {
+				if ($i == 0) { 
+					$p_body = $p_body.$body[$i];
+				}
+				else {
+					$p_body = $p_body.", ".$body[$i];	
+				}
+				$i++;
+			}
+
+			$rule[$idx] = $p_head." :- ".$p_body;
+			unset($p_body);
+			$idx++;	
+		}
+		
+	 	print_r($rule);
+	 	return $rule;
+	}
+
 	function identifyRule($rule) { //split rule head and rule body
 
 		$delimiter = '/[\s:-]+/';
@@ -15,10 +64,26 @@
 		$expr = identifyExp($temp);
 		$queryexpr = insertExp($expr);
 
-		print_r($queryhead);
-		insertData($queryhead);
-		print_r($querybody);
-		print_r($queryexpr);
+		// print_r($queryhead);
+		foreach ($querybody as $query) {
+			$i = 0;
+			while($i<sizeof($query)) {
+				array_push($queryhead, $query[$i]);
+				$i++;
+			}
+		}
+
+		foreach ($queryexpr as $query) {
+			$i = 0;
+			while($i<sizeof($query)) {
+				array_push($queryhead, $query[$i]);
+				$i++;
+			}
+		}
+		// insertData($queryhead);
+		// print_r($querybody);
+		// print_r($queryexpr);
+		return $queryhead;
 	}
 
 	function identifyHead($head) { //split predicate head and argument head
@@ -63,7 +128,7 @@
 	function insertBody($rulebody) { //insert rule body into database
 		global $conn;
 
-		$ids = array(); $i=0;
+		$ids = array(); $i=0; print_r($rulebody);
 		foreach ($rulebody as $body) {
 			$predicate = $body->getPredicate();
 			$stmt = $conn->prepare("SELECT id_predikat FROM predikat WHERE nama_predikat = '$predicate'");
@@ -73,7 +138,7 @@
 			$ids[$i] = $id[0];
 			$i++;
 		}
-
+		print_r($ids);
 		$queries = array(); $idx=0;
 		for($j=0; $j<sizeof($ids); $j++) {
 			if(empty($ids[$j])) {
@@ -101,8 +166,20 @@
 		}
 	}
 
-	function identifyExp($body) {
+	function findParent($nested) {
+ 
+		$parent = "";
+		foreach ($nested as $node) {
+			if($node->getLeft() == 1) {
+				$parent = $node->getArg();
+			}			
+		}
 
+		return $parent;		
+	}
+
+	function identifyExp($body) {
+		// print_r($body);
 		$expression = array();
 		for($i=1; $i<sizeof($body); $i++) {
 			if(isExpression($body[$i])) {
@@ -124,6 +201,7 @@
 	function insertExp($expr) { //insert expression into database
 
 		$i=0;
+		$nested = array();
 		foreach ($expr as $arg) {
 			$nested[$i] = buildNestedElmt($arg);
 			$i++;
@@ -259,7 +337,7 @@
 					$result[$idx] = $tokenlist[$i];
 				}
 			}
-			elseif ($tokenlist[$i] == '>') {
+			elseif($tokenlist[$i] == '>') {
 				if($tokenlist[$i+1] == '=') {
 					$result[$idx] = $tokenlist[$i].$tokenlist[$i+1];
 					$i++;
@@ -267,6 +345,31 @@
 				else {
 					$result[$idx] = $tokenlist[$i];
 				}
+			}
+			elseif($tokenlist[$i] == '\'') {
+				$token = "";
+				$j = $i+1;
+				while ($tokenlist[$j] != '\'') {
+					//echo $tokenlist[$j]."\n";
+					$token = $token.$tokenlist[$j];
+					$j++; 
+				}
+				// $i = $i+$j;
+				
+				$result[$idx] = $token;
+				$i = $j+1;
+			}
+			elseif(is_numeric($tokenlist[$i])) {
+				$token = "";
+				// $j = $i+1;
+				while ($i<sizeof($tokenlist)) {
+					if(!ctype_alpha($tokenlist[$i])) { 
+						$token = $token.$tokenlist[$i];
+						$i++;
+					} 
+				}
+
+				$result[$idx] = $token;
 			}
 			else {
 				$result[$idx] = $tokenlist[$i];
@@ -289,13 +392,13 @@
 
 		$opstack = array();
 		$prefixlist = array();
-		$tokens = str_split($expr);
+		$tokens = str_split($expr); 
 		$tokenlist = array_reverse(mergeOperator($tokens));
-		
+
 		// $tokenlist = array_reverse(explode(" ", $expr));
 
 		foreach ($tokenlist as $token) {
-			if(ctype_alnum($token)) {
+			if(ctype_alnum($token) || is_numeric($token)) {
 				array_unshift($prefixlist, $token);
 			}
 			elseif($token == ')') {
@@ -322,9 +425,48 @@
 			$elmt = array_pop($opstack);
 			array_unshift($prefixlist, $elmt);
 		}
-		print_r($tokenlist);
+		// print_r($tokenlist);
 		// print_r($prefixlist);
 		return $prefixlist;
+	}
+
+	function prefixToInfix($expr_arr) {
+
+		$opstack = array();
+		$infixlist = array();
+		// $tokens = str_split($expr); 
+		$tokenlist = array_reverse($expr_arr); //print_r($tokenlist);
+
+		foreach ($tokenlist as $token) {
+			if(ctype_alnum($token) || preg_match("/'/", $token)) {
+				array_push($opstack, $token);
+			}
+			else {
+				$elmt1 = array_pop($opstack);
+				if(!empty($opstack)) {
+					$elmt2 = array_pop($opstack);
+
+					array_unshift($infixlist, ")");
+					array_unshift($infixlist, $elmt2);
+					array_unshift($infixlist, $token);
+					array_unshift($infixlist, $elmt1);
+					array_unshift($infixlist, "(");	
+				}
+				else {
+					array_unshift($infixlist, $token);
+					array_unshift($infixlist, $elmt1);	
+				}			
+			}
+			// print_r($opstack);
+			// print_r($infixlist);
+		}
+		while(!empty($opstack)) {
+			$elmt = array_pop($opstack);
+			array_unshift($prefixlist, $elmt);
+		}
+
+		// print_r($infixlist);
+		return $infixlist;
 	}
 
 	function buildNestedElmt($prefix) {

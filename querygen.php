@@ -29,6 +29,7 @@
 		while($body = $stmt->fetch()) {
 			$attr = substr($sub[$body['isi_argumen']], strpos($sub[$body['isi_argumen']], ".") + 1); //get text after "."
 			$res[$i] = $sub[$body['isi_argumen']]." AS ".$body['isi_argumen'];
+			// echo $res[$i]."\n";
 			$i++;
 		}
 
@@ -130,18 +131,29 @@
 	function getSelection($bodies) {
 
 		$substitution = substituteVar($bodies); //get variable substitute
+		// print_r($bodies);
 		$conditions = array(); //argument(s) for selection
 		$i = 0; $idx = 0;
 
 		while($i < sizeof($bodies)) {
 			if(isComparator($bodies[$i]->getPredicate())) {
-				if(isVariable($bodies[$i+1]->getContent())) {
-					$conditions[$idx] = $substitution[$bodies[$i]->getContent()]." ".$bodies[$i]->getPredicate()." ".$substitution[$bodies[$i+1]->getContent()];
+				// if(isVariable($bodies[$i+1]->getContent())) {
+				// 	$conditions[$idx] = $substitution[$bodies[$i]->getContent()]." ".$bodies[$i]->getPredicate()." ".$substitution[$bodies[$i+1]->getContent()];
+				// 	}
+				// else {
+				// 	$conditions[$idx] = $substitution[$bodies[$i]->getContent()]." ".$bodies[$i]->getPredicate()." ".$bodies[$i+1]->getContent();
+				// }
+				$args = "";
+				foreach ($bodies[$i]->getContent() as $token) {
+					if(isVariable($token)) {
+						$args = $args." ".$substitution[$token];
 					}
-				else {
-					$conditions[$idx] = $substitution[$bodies[$i]->getContent()]." ".$bodies[$i]->getPredicate()." ".$bodies[$i+1]->getContent();
+					else {
+						$args = $args." ".$token;
+					}
 				}
-				$i++; $idx++;
+				$conditions[$idx] = $args;
+				$idx++;
 			}
 			$i++;
 		}
@@ -603,8 +615,19 @@
 			$rule_id = $max[0]+1;
 		}
 		
-		$predicate = "INSERT INTO body_idb(id_aturan, urutan_body, predikat, is_negasi) VALUES (".$rule_id.", ".$order.", NULL, 'FALSE')";
+		$parent = findParent($nested); //determine parent node
+		//echo $parent."\n";
+
+		$stmt = $conn->prepare("SELECT id_predikat FROM predikat WHERE nama_predikat = '$parent'");
+		$stmt->execute();
+		$res = $stmt->fetch();
+		$id = $res[0];
+
+		$predicate = "INSERT INTO body_idb(id_aturan, urutan_body, predikat, is_negasi) VALUES ($rule_id, $order, $id, 'FALSE')";
 		$queries[0] = $predicate;
+
+		$body_arg = "INSERT INTO argumen_body(id_aturan, urutan_body, urutan_argumen,isi_argumen) VALUES ($rule_id, $order, 1, NULL)";
+		$queries[1] = $body_arg;
 
 		$i=0;
 		while ($i<sizeof($nested)) {
@@ -613,7 +636,7 @@
 			$right = $nested[$i]->getRight();
 
 			$arg = "INSERT INTO ekspresi(id_aturan, urutan_body, exp_id, argumen, leftnum, rightnum) VALUES (".$rule_id.", ".$order.", ".($i+1).", '".$node."', ".$left.", ".$right.")";
-			$queries[$i+1] = $arg;
+			$queries[$i+2] = $arg;
 			$i++;
 		}
 		

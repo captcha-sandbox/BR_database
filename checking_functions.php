@@ -233,6 +233,7 @@
 		$bodies = collectRules($reference);
 		$queries = ruleToQuery($bodies, $reference, $cons);
 
+		print_r($queries);
 		return $queries;
 	}
 
@@ -241,7 +242,7 @@
 
 		#generate constant to be checked
 		$ref = generateTarget($predicate);
-		print_r($ref);
+		echo "Reference \n"; print_r($ref);
 		foreach ($ref as $name => $query) {
 			createView($query, $name);
 		}
@@ -249,7 +250,7 @@
 		$stmt = $conn->prepare("SELECT * FROM $name");
 		$stmt->execute();
 		$cons = $stmt->fetchAll();
-		print_r($cons); 
+		echo "Constant \n"; print_r($cons); 
 
 		#generate table based on rule and constant
 		$queries = array(); $j=0;
@@ -259,6 +260,7 @@
 			$queries[$j] = ruleToQuery($test, $predicate, $value);
 			$j++;
 		}
+		echo "Queries \n";
 		print_r($queries);
 
 
@@ -283,6 +285,7 @@
 			$stmt = $conn->prepare($check[$j]); // get instance to be tested
 			$stmt->execute();
 			$res = $stmt->fetch();
+			echo "Result \n";
 			if($res[0] == 0) {
 				$result[$x] = "Instance ".$instance[$j]."violated business rule \n";
 				$x++;

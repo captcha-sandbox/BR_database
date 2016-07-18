@@ -1,7 +1,7 @@
 <?php
 
 	function isVariable($arg) {
-		return ctype_upper($arg);
+		return ctype_lower($arg);
 	}
 
 	function isComparator($arg) {
@@ -330,7 +330,15 @@
 			$rb->setNegasi($body['is_negasi']);
 			$rb->setBodyOrder($body['urutan_body']);
 			$rb->setArgOrder($body['urutan_argumen']);
-			$rb->setContent($body['isi_argumen']);
+
+			if(isComparator($body['nama_predikat'])) {
+				$arg = getExpression($rule, $body['urutan_body']);
+				$rb->setContent(prefixToInfix($arg));
+			}
+			else {
+				$rb->setContent($body['isi_argumen']);	
+			}
+			
 
 			$res[$i] = $rb;
 			$i++;
@@ -338,7 +346,104 @@
 		return $res;
 	}
 
-	function mergeBody($bodies, $cons) {
+	// function getRuleExpr($predicate) {
+	// 	global $conn;
+
+	// 	//get head part of idb
+ // 		$stmt = $conn->prepare("SELECT id_predikat FROM predikat WHERE nama_predikat = '$predicate'");
+	// 	$stmt->execute();
+	// 	$id = $stmt->fetch();
+	// 	$head = $id[0];
+
+	// 	$stmt = $conn->prepare("SELECT id_aturan FROM idb WHERE id_predikat = $head");
+	// 	$stmt->execute();
+
+	// 	$res = array();
+	// 	if(!hasVariant($predicate)) { //only one rule has this head
+	// 		$rule_id = $stmt->fetch(); 
+	// 		$rule = $rule_id[0];
+	// 		$res = getExpression($rule);
+	// 	}
+	// 	else { //some rules have similar head
+	// 		$i = 0;
+	// 		while ($rule_id = $stmt->fetch()) {
+	// 			$rules[$i] = $rule_id['id_aturan'];
+	// 			$i++;
+	// 		}
+
+	// 		$i = 0;
+	// 		foreach ($rules as $rule) {
+	// 			$res[$i] = getExpression($rule);
+	// 			$i++;
+	// 		}
+	// 	}
+
+	// 	return $res; 
+	// }
+
+	function getExpression($rule, $order) {
+		global $conn;
+		// echo $rule."\n";
+		$res = array();
+		$stmt = $conn->prepare("SELECT e.argumen FROM `body_idb` b, `ekspresi` e, `predikat` p WHERE p.id_predikat = b.predikat AND b.urutan_body = e.urutan_body AND e.id_aturan = $rule AND b.id_aturan = $rule AND e.urutan_body = $order ORDER BY leftnum ASC");
+		$stmt->execute();
+
+		$i=0;
+		while ($expr = $stmt->fetch()) {
+			$res[$i] = $expr['argumen'];
+			$i++;
+		}
+
+		// print_r($res);
+		return $res;
+	}
+
+	function mergeHead($head) {// $cons) {
+		global $conn;  //print_r($bodies)."\n";
+
+		$predicate = "";
+
+		$i = 0; $j = 0;
+		$obj = "";
+		while ($i<sizeof($head)) {
+			$p = $head[$i]->getPredicate();
+			$q = ""; 
+			$constant = "";
+
+			if($i<sizeof($head)-1) {
+				$q = $head[$i+1]->getPredicate();
+			}
+
+			// if(!isComparator($p)) {
+			// 	$constant = $cons[$bodies[$i]->getArgOrder()-1];
+			// }
+			// else {
+				$constant = $head[$i]->getContent();
+			// }
+
+			//if(!isComparator($p)) {
+				if(strcmp($obj, $p) != 0) {
+					$obj = $p;
+					$predicate = $predicate.$obj."(".$constant;
+					if(strcmp($p, $q) != 0) {// check if there is only one argument
+						$predicate = $predicate.")";	
+					}
+				}
+				else {
+					//echo $p." ".$q."\n";
+					$predicate = $predicate.",".$constant;
+					if(strcmp($p, $q) != 0) {// check if there is no more argument
+						$predicate = $predicate.")";	
+					}
+				}
+			$i++;
+		}
+	
+		//print_r($predicates);
+		return $predicate;
+	}
+
+	function mergeBody($bodies) {// $cons) {
 		global $conn;  //print_r($bodies)."\n";
 
 		$predicate = "";
@@ -346,8 +451,8 @@
 
 		$i = 0; $j = 0;
 		$obj = "";
-		while ($i<sizeof($bodies)) {
-			$p = $bodies[$i]->getPredicate();
+		while ($i<sizeof($bodies)) { //print_r($bodies);
+			$p = $bodies[$i]->getPredicate();		
 			$q = "";
 			$constant = "";
 
@@ -355,17 +460,23 @@
 				$q = $bodies[$i+1]->getPredicate();
 			}
 
-			if(!isComparator($p)) {
-				$constant = $cons[$bodies[$i]->getArgOrder()-1];
-			}
-			else {
+			// if(!isComparator($p)) {
+			// 	$constant = $cons[$bodies[$i]->getArgOrder()-1];
+			// }
+			// else {
 				$constant = $bodies[$i]->getContent();
-			}
+			// }
 
-			//if(!isComparator($p)) {
+			if(!isComparator($p)) {
 				if(strcmp($obj, $p) != 0) {
 					$obj = $p;
-					$predicate = $predicate.$obj."(".$constant;
+					if($bodies[$i]->isNegasi() == "TRUE") {
+						$predicate = $predicate."~".$obj."(".$constant;
+					}
+					else {
+						$predicate = $predicate.$obj."(".$constant;
+					}
+					
 					if(strcmp($p, $q) != 0) {// check if there is only one argument
 						$predicate = $predicate.")";
 						$predicates[$j] = $predicate;
@@ -382,7 +493,17 @@
 						$j++;
 						$predicate = "";	
 					}
+				}}
+			else {
+				$expr = "";
+				$args = $bodies[$i]->getContent();
+				foreach ($args as $operand) {
+					$expr = $expr.$operand;
 				}
+				// echo $expr."\n";
+				$predicates[$j] = $expr;
+				$j++;
+			}
 			$i++;
 		}
 	

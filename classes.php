@@ -93,6 +93,7 @@
 		
 		var $rule_id;
 		var $predicate;
+		var $negasi;
 		var $arg_order;
 		var $content;
 
