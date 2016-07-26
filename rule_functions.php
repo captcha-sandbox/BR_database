@@ -13,6 +13,15 @@
 		}
 	}
 
+	function isArithmatic($arg) {
+		if($arg == '+' OR $arg == '-' OR $arg == '*' OR $arg == '/') {
+			return true;
+		}
+		else {
+			return false;
+		}	
+	}
+
 	function isOperator($predicate) {
 		global $conn;
 
@@ -69,6 +78,22 @@
 		}
 	}
 
+	function hasCurrent($body) { //check if operator previous is being used
+
+		$predicates = array(); $i=0;
+		foreach ($body as $rulebody) {
+			$predicates[$i] = $rulebody->getPredicate();
+			$i++;
+		}
+
+		if(in_array("current", $predicates)) {
+			return true;
+		}
+		else {
+			return false;
+		}			
+	}
+	
 	function hasPrevious($body) { //check if operator previous is being used
 
 		$predicates = array(); $i=0;
@@ -78,6 +103,22 @@
 		}
 
 		if(in_array("previous", $predicates)) {
+			return true;
+		}
+		else {
+			return false;
+		}			
+	}
+
+	function hasNext($body) { //check if operator previous is being used
+
+		$predicates = array(); $i=0;
+		foreach ($body as $rulebody) {
+			$predicates[$i] = $rulebody->getPredicate();
+			$i++;
+		}
+
+		if(in_array("next", $predicates)) {
 			return true;
 		}
 		else {
@@ -131,6 +172,32 @@
 			}
 			$j++;
 		}
+		return $on;
+	}
+
+	function getNextVal($bodies) {
+		$on = array(); $j=0;
+		while ($j<sizeof($bodies)) {
+			if($bodies[$j]->getPredicate() == "next") {
+				$on[$bodies[$j]->getContent()] = $bodies[$j+1]->getContent();
+				$j++;
+			}
+			$j++;
+		}
+
+		return $on;
+	}
+
+	function getCurrentVal($bodies) {
+		$on = array(); $j=0;
+		while ($j<sizeof($bodies)) {
+			if($bodies[$j]->getPredicate() == "current") {
+				$on[$bodies[$j]->getContent()] = "value";
+				$j++;
+			}
+			$j++;
+		}
+
 		return $on;
 	}
 
@@ -606,8 +673,8 @@
 			if(hasVariant($idb[$i])) {
 				$temp = getRuleBody($idb[$i]);
 				foreach ($temp as $body) {
-				 	$test[$idx] = sortBody($body);
-				 	$idx++;
+					$test[$idx] = sortBody($body);
+					$idx++;
 				 } 
 			}
 			else { 

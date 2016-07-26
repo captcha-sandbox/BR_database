@@ -38,13 +38,8 @@
 
 	// needed for performance optimization 
 	function getOnProperties($bodies) {
-		global $conn; 
-		$predicate = $bodies[0]->getPredicate();
-		// $substitution = substituteVar($bodies);
-
-		// foreach ($substitution as $key => $data) {
-		// 	$substitution[$key] = substr($data, strpos($data, ".") + 1);
-		// }    
+		global $conn; //print_r($bodies);
+		$predicate = $bodies[0]->getPredicate(); 
 
 		$args = array();
 		
@@ -105,7 +100,7 @@
 									$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$res[$body->getContent()];
 									//echo $on[$i]."\n";
 								}
-								else {
+								else { 
 									$on[$i] = $predicate.".".$res[$body->getContent()]." = ".$body->getPredicate().".".$body->getContent();
 								}
 							}
@@ -170,30 +165,63 @@
 		$stmt = $conn->prepare("SELECT `isi_argumen` FROM `argumen_head` WHERE id_rule = $id");
 		$stmt->execute();
 		
+		$knoww = array(); 
 		while($body = $stmt->fetch()) {
 			$arg = $body['isi_argumen'];
 			$res[$arg] = $sub[$arg];
+			$known[$arg] = 0;
 		}
 
 		$values = array(); $i=0;
 		if(!empty($cons)) { //only executed when constant is provided
 			$val = getPreviousVal2($bodies); //get previous value if any
+			$next = getNextVal($bodies); //get next value if any
+			// $current = getCurrentVal($bodies); //get current value if any
+
+			// foreach ($res as $arg => $attr) {
+			// 	if(!empty($cons[$arg])) {
+			// 		if(hasCurrent($bodies)) {
+
+			// 			if(!empty($current[$arg])) {
+			// 				$values[$i] = $attr." = ".$cons[$arg];
+			// 				$i++;
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			foreach ($res as $arg => $attr) {
+				if(!empty($cons[$arg])) {
+					if(hasNext($bodies)) {
+						if(!empty($next[$arg])) {
+							$values[$i] = $attr." = ".$cons[$arg]."+".$next[$arg];
+							$known[$arg] = 1;
+							$i++;
+						}
+					}
+				}
+			}
+
 			foreach ($res as $arg => $attr) {
 				if(!empty($cons[$arg])) {
 					if(hasPrevious($bodies)) {
 						if(!empty($val[$arg])) {
 							$values[$i] = $attr." = ".$cons[$arg]."-".$val[$arg];
+							$i++;
 						}
-						else {
-							$values[$i] = $attr." = ".$cons[$arg];
+						else { 
+							if($known[$arg] == 0) {
+								$values[$i] = $attr." = ".$cons[$arg];
+								$i++;
+							}
 						}
-						$i++;
+						
 					}
 					else {
 						$values[$i] = $attr." = ".$cons[$arg];
 						$i++;
 					}
-			}
+				}
 			}
 		}
 		// print_r($values);
@@ -397,11 +425,19 @@
 	 	$constant = ""; //combine input from user
 	 	if(!empty($cons)) { //only executed when constant is defined
 	 		$value = getQueryVal($head, $bodies, $sub, $cons);
-	 		for($i=0; $i<sizeof($value); $i++) {
+
+	 		if(empty($where) && empty($join) && empty($negation)) {
+	 			$constant = $constant." ".$value[0];	
+	 		}
+	 		else {
+	 			$constant = $constant." AND ".$value[0];
+	 		}
+
+	 		for($i=1; $i<sizeof($value); $i++) {
 	 			$constant = $constant." AND ".$value[$i];
 	 		}
 	 	}
-	 	// echo $constant."\n"
+	 	// echo $constant."\n";
 
 	 	$neg_query = ""; 
 	 	for($i=0; $i<sizeof($negation); $i++) {
@@ -419,7 +455,12 @@
 	 		$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition;	
 	 	}
 	 	else {
-	 		$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition." ".$constant;	
+	 		if(empty($on) && empty($condition) && empty($constant) && empty($neg_query)) {
+	 			$generate = "SELECT ".$attr." FROM ".$tables;
+	 		}
+	 		else {
+	 			$generate = "SELECT ".$attr." FROM ".$tables." WHERE ".$neg_query." ".$on." ".$condition." ".$constant;
+	 		}	
 	 	}
 	 	// echo ($generate)."\n";
 	 	return $generate;
@@ -454,6 +495,7 @@
 			$idx++;
 			$i++;
 		}
+		// print_r($queries);
 		return $queries;
 	}
 

@@ -6,7 +6,7 @@
 		$head = getHead($predicate);
 		$bodies = getRuleBody($predicate);
 		// $expr = getRuleExpr($predicate);
-		print_r($bodies);
+		// print_r($bodies);
 		$predicates = array();
 
 		$p_head = mergeHead($head); 
@@ -45,23 +45,27 @@
 			$idx++;	
 		}
 		
-	 	print_r($rule);
+	 	// print_r($rule);
 	 	return $rule;
 	}
 
 	function identifyRule($rule) { //split rule head and rule body
 
-		$delimiter = '/[\s:-]+/';
-		$temp = preg_split($delimiter, $rule);
-		// print_r($temp);
+		$delimiter1 = '/(\s+)[\s:-]+/';
+		$delimiter2 = '/[\s,]+/';
+		$temp = preg_split($delimiter1, $rule);
+		$temp2 = explode(", ", $temp[1]);
+		array_unshift($temp2, $temp[0]);
+		print_r($temp2);
 
-		$head = identifyHead($temp);
+
+		$head = identifyHead($temp2);
 		$queryhead = insertHead($head);
 
-		$body = identifyBody($temp);
+		$body = identifyBody($temp2);
 		$querybody = insertBody($body);
 
-		$expr = identifyExp($temp);
+		$expr = identifyExp($temp2);
 		$queryexpr = insertExp($expr);
 
 		// print_r($queryhead);
@@ -128,7 +132,7 @@
 	function insertBody($rulebody) { //insert rule body into database
 		global $conn;
 
-		$ids = array(); $i=0; print_r($rulebody);
+		$ids = array(); $i=0; //print_r($rulebody);
 		foreach ($rulebody as $body) {
 			$predicate = $body->getPredicate();
 			$stmt = $conn->prepare("SELECT id_predikat FROM predikat WHERE nama_predikat = '$predicate'");
@@ -138,7 +142,7 @@
 			$ids[$i] = $id[0];
 			$i++;
 		}
-		print_r($ids);
+		//print_r($ids);
 		$queries = array(); $idx=0;
 		for($j=0; $j<sizeof($ids); $j++) {
 			if(empty($ids[$j])) {
@@ -238,8 +242,8 @@
 		$delimiter = '/[\s,]+/';
 
 		preg_match($regex_p, $arg, $predicate);
-		preg_match($regex_c, $arg, $conditions);
-		$temp = preg_split($delimiter, $conditions[1]);
+		preg_match($regex_c, $arg, $conditions); 
+		$temp = preg_split($delimiter, $conditions[1]); 
 
 		$i=1;
 		// $key = "argumen_";
@@ -277,7 +281,7 @@
 		}
 
 		//echo($predicate[0]);
-		//print_r($temp);
+		// print_r($temp);
 		return $q;
 	}
 
@@ -325,7 +329,7 @@
 
 	function mergeOperator($tokenlist) {
 
-		$result = array();
+		$result = array(); //print_r($tokenlist);
 		$i=0; $idx = 0;
 		while ($i<sizeof($tokenlist)) {
 			if($tokenlist[$i] == '<') {
@@ -347,7 +351,7 @@
 				}
 			}
 			elseif($tokenlist[$i] == '\'') {
-				$token = "";
+				$token = "'";
 				$j = $i+1;
 				while ($tokenlist[$j] != '\'') {
 					//echo $tokenlist[$j]."\n";
@@ -356,19 +360,20 @@
 				}
 				// $i = $i+$j;
 				
-				$result[$idx] = $token;
+				$result[$idx] = $token."'";
 				$i = $j+1;
 			}
 			elseif(is_numeric($tokenlist[$i])) {
-				$token = "";
+				$token = ""; //echo "Masuk \n";
 				// $j = $i+1;
-				while ($i<sizeof($tokenlist)) {
-					if(!ctype_alpha($tokenlist[$i])) { 
+				while ($i<sizeof($tokenlist) && (is_numeric($tokenlist[$i]) || $tokenlist[$i] == "." || $tokenlist[$i] == ",")) {
+					//if(!ctype_alpha($tokenlist[$i]) && !isComparator($tokenlist[$i])) { 
 						$token = $token.$tokenlist[$i];
 						$i++;
-					} 
+					//}
+					
 				}
-
+				$i--;
 				$result[$idx] = $token;
 			}
 			else {
@@ -378,7 +383,7 @@
 			$i++; $idx++;
 		}
 		// echo "Merge result \n";
-		// print_r($result);
+		//print_r($result);
 		return $result;
 	}
 
@@ -386,19 +391,19 @@
 
 		//operator precedence
 	 	$prec = array();
-    $prec["*"] = 3; $prec["/"] = 3; $prec["+"] = 2; $prec["-"] = 2; $prec["="] = 1;
-    $prec["<>"] = 1; $prec[">="] = 1; $prec["<="] = 1; $prec["<"] = 1; $prec[">"] = 1;
-    $prec[")"] = 0;
+	    $prec["*"] = 3; $prec["/"] = 3; $prec["+"] = 2; $prec["-"] = 2; $prec["="] = 1;
+	    $prec["<>"] = 1; $prec[">="] = 1; $prec["<="] = 1; $prec["<"] = 1; $prec[">"] = 1;
+	    $prec[")"] = 0;
 
 		$opstack = array();
 		$prefixlist = array();
-		$tokens = str_split($expr); 
-		$tokenlist = array_reverse(mergeOperator($tokens));
+		$tokens = str_split($expr);
+		$tokenlist = array_reverse(mergeOperator($tokens)); 
 
 		// $tokenlist = array_reverse(explode(" ", $expr));
 
 		foreach ($tokenlist as $token) {
-			if(ctype_alnum($token) || is_numeric($token)) {
+			if(ctype_alnum($token) || is_numeric($token) || strpos($token, '\'') !== false || strpos($token, '.') !== false || strpos($token, ',') !== false) {
 				array_unshift($prefixlist, $token);
 			}
 			elseif($token == ')') {
@@ -419,6 +424,7 @@
 				}
 				array_push($opstack, $token);
 			}
+			// echo $token."\n";
 		}
 
 		while(!empty($opstack)) {
@@ -426,7 +432,7 @@
 			array_unshift($prefixlist, $elmt);
 		}
 		// print_r($tokenlist);
-		// print_r($prefixlist);
+		// print_r($prefixlist); echo "This is prefix \n";
 		return $prefixlist;
 	}
 
@@ -434,39 +440,54 @@
 
 		$opstack = array();
 		$infixlist = array();
+		$temp = array();
 		// $tokens = str_split($expr); 
 		$tokenlist = array_reverse($expr_arr); //print_r($tokenlist);
 
-		foreach ($tokenlist as $token) {
-			if(ctype_alnum($token) || preg_match("/'/", $token)) {
-				array_push($opstack, $token);
+		$i=0;
+		while ($i<sizeof($tokenlist)) {
+			if(ctype_alnum($tokenlist[$i]) || strpos($tokenlist[$i], '\'') !== false || strpos($tokenlist[$i], ',') !== false || strpos($tokenlist[$i], '.') !== false) {
+				array_push($opstack, $tokenlist[$i]);
 			}
 			else {
 				$elmt1 = array_pop($opstack);
-				if(!empty($opstack)) {
-					$elmt2 = array_pop($opstack);
+				$elmt2 = array_pop($opstack);
 
-					array_unshift($infixlist, ")");
-					array_unshift($infixlist, $elmt2);
-					array_unshift($infixlist, $token);
-					array_unshift($infixlist, $elmt1);
-					array_unshift($infixlist, "(");	
+				if($i == sizeof($tokenlist)-1) {
+					$args = $elmt1.$tokenlist[$i].$elmt2;
 				}
 				else {
-					array_unshift($infixlist, $token);
-					array_unshift($infixlist, $elmt1);	
-				}			
+					$args = "(".$elmt1.$tokenlist[$i].$elmt2.")";
+				}
+				// echo $tokenlist[$i]."\n";
+				// echo "Pop result ".$args." \n";
+				array_push($opstack, $args);
+				// if(!empty($opstack)) {
+				// 	$elmt2 = array_pop($opstack);
+
+				// 	array_unshift($infixlist, ")");
+				// 	array_unshift($infixlist, $elmt2);
+				// 	array_unshift($infixlist, $token);
+				// 	array_unshift($infixlist, $elmt1);
+				// 	array_unshift($infixlist, "(");	
+				// }
+				// else {
+				// 	array_unshift($infixlist, $token);
+				// 	array_unshift($infixlist, $elmt1);	
+				// }			
 			}
 			// print_r($opstack);
 			// print_r($infixlist);
+			$i++;
 		}
 		while(!empty($opstack)) {
 			$elmt = array_pop($opstack);
-			array_unshift($prefixlist, $elmt);
+			array_unshift($infixlist, $elmt);
 		}
 
-		// print_r($infixlist);
-		return $infixlist;
+		// print_r($infixlist); 
+		$result = mergeOperator(str_split($infixlist[0]));
+		return $result;
 	}
 
 	function buildNestedElmt($prefix) {

@@ -90,7 +90,7 @@
 			}
 			$i++;
 		}
-		
+		// echo "Masuk \n";
 		foreach ($queries as $name => $query) {
 			createView($query, $name);
 		}
@@ -181,6 +181,7 @@
 		// print_r($queries);
 
 		foreach ($queries as $name => $query) {
+			// echo "Masuk \n";
 			createTempTable($query, $name);
 		}
 
@@ -231,6 +232,7 @@
 		$reference = $res[0];
 
 		$bodies = collectRules($reference);
+		generateRef($bodies);
 		$queries = ruleToQuery($bodies, $reference, $cons);
 
 		print_r($queries);
@@ -247,21 +249,21 @@
 			createView($query, $name);
 		}
 
-		$stmt = $conn->prepare("SELECT * FROM $name");
+		$stmt = $conn->prepare("SELECT * FROM $name"); 
 		$stmt->execute();
 		$cons = $stmt->fetchAll();
-		echo "Constant \n"; print_r($cons); 
+		// echo "Constant \n"; print_r($cons); 
 
 		#generate table based on rule and constant
 		$queries = array(); $j=0;
-		foreach ($cons as $value) {
-			$test = collectRules($predicate);
+		foreach ($cons as $value) { 
+			$test = collectRules($predicate); //print_r($test);
 			generateRef($test); 
-			$queries[$j] = ruleToQuery($test, $predicate, $value);
+			$queries[$j] = ruleToQuery($test, $predicate, $value); print_r($queries[$j]);
 			$j++;
 		}
-		echo "Queries \n";
-		print_r($queries);
+		// echo "Queries \n";
+		// print_r($queries);
 
 
 		#generate query for checking
@@ -278,13 +280,13 @@
 		$idx = 0; $j=0;
 		$result = array(); $x=0;
 		while ($idx<sizeof($queries)) {
-			foreach ($queries[$idx] as $table => $query) {
+			foreach ($queries[$idx] as $table => $query) { //echo $query."\n";
 				createView($query, $table);
 			}
 
 			$stmt = $conn->prepare($check[$j]); // get instance to be tested
 			$stmt->execute();
-			$res = $stmt->fetch();
+			$res = $stmt->fetch(); echo $instance[$j]."\n";
 			echo "Result \n";
 			if($res[0] == 0) {
 				$result[$x] = "Instance ".$instance[$j]."violated business rule \n";

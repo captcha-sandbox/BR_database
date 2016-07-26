@@ -30,9 +30,11 @@
 	// }
 
 	// print_r($rules);
-	//generateTarget("max24_sks");
-	$result = prepareChecking("max24_sks");
-	writeReport($result, "BS2A");
+	// generateTarget("ambil_S2");
+	// $a = collectRules("matkul_S2");
+	// ruleToQuery($a, "matkul_S2", $cons);
+	$result = prepareChecking("daftar_ulang");
+	#writeReport($result, "BS2A");
 	// checkInstance2("max24_sks");
 
 	// $queries = array(); $j=0;
@@ -73,11 +75,11 @@
 
 	// $conn = null;
 
-	// identifyRule("last_nr(x,y) :- nr(x,y,z), ~nr_lengkap(x,y), previous(y,1), y<1, x='s2'");
-	// identifyRule("max24_sks(x,y) :- mhs_s1(x), last_nr(x,y,z), z>=3.25");
-	// buildRule("last_nr");
+	// parseArgument("daftar_ulang(x,y,z) :- stat_mahasiswa1(x,y,z,a,b), terdaftar(x), a='Tunai', b='Tidak_skorsing'");
+	// identifyRule("terdaftar(x,y,z) :- daftar2(x,y,z,f), previous(z,1), y=2");
+	// buildRule("max24_sks");
 	// buildRule("mhs_s1"); //prefixToInfix(getExpression(7));
-	// $a = infixToPrefix("y<z+2"); prefixToInfix("<y+z2");
+	 // $a = infixToPrefix("y+2.5=x"); prefixToInfix($a);
 	// buildNestedElmt($a);
 
 	$conn = null;
