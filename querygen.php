@@ -27,10 +27,12 @@
 
 		$i = 0;
 		while($body = $stmt->fetch()) {
-			$attr = substr($sub[$body['isi_argumen']], strpos($sub[$body['isi_argumen']], ".") + 1); //get text after "."
-			$res[$i] = $sub[$body['isi_argumen']]." AS ".$body['isi_argumen'];
-			// echo $res[$i]."\n";
-			$i++;
+			//if(!empty($sub[$body['isi_argumen']])) {
+				$attr = substr($sub[$body['isi_argumen']], strpos($sub[$body['isi_argumen']], ".") + 1); //get text after "."
+				$res[$i] = $sub[$body['isi_argumen']]." AS ".$body['isi_argumen'];
+				// echo $res[$i]."\n";
+				$i++;
+			//}
 		}
 
 		return $res;
@@ -140,12 +142,14 @@
 				// }
 				$args = "";
 				foreach ($bodies[$i]->getContent() as $token) {
-					if(isVariable($token)) {
-						$args = $args." ".$substitution[$token];
-					}
-					else {
-						$args = $args." ".$token;
-					}
+					//if(!empty($substitution[$token])) {
+						if(isVariable($token)) {
+							$args = $args." ".$substitution[$token];
+						}
+						else {
+							$args = $args." ".$token;
+						}
+					//}
 				}
 				$conditions[$idx] = $args;
 				$idx++;

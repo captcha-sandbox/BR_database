@@ -235,7 +235,7 @@
 		generateRef($bodies);
 		$queries = ruleToQuery($bodies, $reference, $cons);
 
-		print_r($queries);
+		// print_r($queries);
 		return $queries;
 	}
 
@@ -252,7 +252,7 @@
 		$stmt = $conn->prepare("SELECT * FROM $name"); 
 		$stmt->execute();
 		$cons = $stmt->fetchAll();
-		// echo "Constant \n"; print_r($cons); 
+		echo "Constant \n"; print_r($cons); 
 
 		#generate table based on rule and constant
 		$queries = array(); $j=0;

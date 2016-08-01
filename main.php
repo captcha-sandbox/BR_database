@@ -31,9 +31,9 @@
 
 	// print_r($rules);
 	// generateTarget("ambil_S2");
-	// $a = collectRules("matkul_S2");
-	// ruleToQuery($a, "matkul_S2", $cons);
-	$result = prepareChecking("daftar_ulang");
+	// $a = collectRules("dropout_S1");
+	// ruleToQuery($a, "dropout_S1", $cons);
+	$result = prepareChecking("dropout_S1");
 	#writeReport($result, "BS2A");
 	// checkInstance2("max24_sks");
 
